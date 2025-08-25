@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - NEXUS COGS Calculator{% endblock %}
+
+{% block content %}
+<div class="px-4 py-5 my-5 text-center">
+    <h1 class="display-5 fw-bold">NEXUS COGS Calculator</h1>
+    <div class="col-lg-6 mx-auto">
+        <p class="lead mb-4">Welcome to the NEXUS COGS Calculator. This application helps you accurately calculate the total cost of goods for your e-commerce business by allocating various costs like freight and customs tariffs.</p>
+        <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+            <a href="{% url 'invoice_upload' %}" class="btn btn-primary btn-lg px-4 gap-3">Upload Invoice</a>
+            <a href="{% url 'results' %}" class="btn btn-outline-secondary btn-lg px-4">View Results</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

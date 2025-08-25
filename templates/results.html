@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Results - NEXUS COGS Calculator{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Results</h2>
+    <div>
+        <a href="{% url 'add_cost_pool' %}" class="btn btn-primary">+ Add Cost</a>
+        <a href="{% url 'recalculate_costs' %}" class="btn btn-secondary">Recalculate</a>
+        <a href="#" class="btn btn-success">Download CSV</a>
+    </div>
+</div>
+
+<form method="get" class="row g-3 mb-4">
+    <div class="col-md-4">
+        <label for="container" class="form-label">Container</label>
+        <input type="text" class="form-control" name="container" id="container" value="{{ request.GET.container }}">
+    </div>
+    <div class="col-md-4">
+        <label for="invoice" class="form-label">Invoice</label>
+        <input type="text" class="form-control" name="invoice" id="invoice" value="{{ request.GET.invoice }}">
+    </div>
+    <div class="col-md-3">
+        <label for="date" class="form-label">Date</label>
+        <input type="date" class="form-control" name="date" id="date" value="{{ request.GET.date }}">
+    </div>
+    <div class="col-md-1 d-flex align-items-end">
+        <button class="btn btn-primary" type="submit">Filter</button>
+    </div>
+</form>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Invoice#</th>
+            <th>Invoice Date</th>
+            <th>Container ID</th>
+            <th>PO#</th>
+            <th>SKU</th>
+            <th>Quantity</th>
+            <th>Vendor Price</th>
+            <th>Vendor Cost</th>
+            <th>Freight Cost</th>
+            <th>HSUS Tariff</th>
+            <th>Other Costs</th>
+            <th>TOTAL COST</th>
+            <th>Unit Total Cost</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for result in results_data %}
+        <tr>
+            <td>{{ result.line.invoice.invoice_number }}</td>
+            <td>{{ result.line.invoice.invoice_date }}</td>
+            <td>{{ result.line.invoice.container.container_id }}</td>
+            <td>{{ result.line.invoice.po_number }}</td>
+            <td>{{ result.line.sku.sku }}</td>
+            <td>{{ result.line.quantity }}</td>
+            <td>{{ result.line.price_vendor }}</td>
+            <td>{{ result.vendor_cost }}</td>
+            <td>{{ result.freight_cost }}</td>
+            <td>{{ result.hsus_tariff }}</td>
+            <td>{{ result.other_costs_total }}</td>
+            <td>{{ result.total_cost }}</td>
+            <td>{{ result.unit_total_cost }}</td>
+            <td>
+                <a href="{% url 'toggle_hsus' result.line.invoice.pk %}" class="btn btn-sm btn-info">Toggle HSUS</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
