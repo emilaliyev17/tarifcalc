@@ -266,5 +266,4 @@ def download_hsus_sku_template(request):
     if os.path.exists(file_path):
         return FileResponse(open(file_path, 'rb'), as_attachment=True, filename='hsus_sku_template.csv')
     else:
-        messages.error(request, 'Template file not found.')
-        return redirect('home') # Or a more appropriate redirect
+        return HttpResponse("Template file not found at: " + file_path, status=404)
