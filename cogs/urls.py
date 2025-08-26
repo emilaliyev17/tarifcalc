@@ -7,6 +7,7 @@ urlpatterns = [
     path('skus/', views.sku_list, name='sku_list'),
     path('skus/upload/', views.sku_upload, name='sku_upload'),
     path('skus/download/', views.sku_download, name='sku_download'),
+    path('skus/template/download/', views.download_hsus_sku_template, name='download_hsus_sku_template'),
     path('skus/<int:pk>/edit/', views.sku_edit, name='sku_edit'),
     path('hsus/', views.hsus_code_list, name='hsus_code_list'),
     path('hsus/<int:pk>/delete/', views.hsus_code_delete, name='hsus_code_delete'),

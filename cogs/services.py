@@ -64,7 +64,12 @@ class AllocationService:
 
         total_tariff = Decimal(0)
         for line in invoice.lines.all():
-            rate = line.sku.hsus_rate_pct or (line.sku.hsus_code.rate_pct if line.sku.hsus_code else Decimal(0))
+            # Modified logic for rate determination
+            if not invoice.apply_db_hsus_rate and invoice.manual_hsus_rate_pct is not None:
+                rate = invoice.manual_hsus_rate_pct
+            else:
+                rate = line.sku.hsus_rate_pct or (line.sku.hsus_code.rate_pct if line.sku.hsus_code else Decimal(0))
+
             tariff_amount = (line.price_vendor * line.quantity) * (rate / Decimal(100))
             total_tariff += tariff_amount
 

@@ -1,5 +1,7 @@
-from django.http import HttpResponse
+from django.http import HttpResponse, FileResponse
 from django.shortcuts import render, redirect, get_object_or_404
+import os
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from .forms import InvoiceUploadForm, HSUSCodeForm, SKUForm, CostPoolForm
@@ -253,3 +255,12 @@ def results(request):
         })
 
     return render(request, 'results.html', {'results_data': results_data})
+
+@login_required
+def download_hsus_sku_template(request):
+    file_path = os.path.join(settings.BASE_DIR, 'cogs', 'static', 'cogs', 'hsus_sku_template.csv')
+    if os.path.exists(file_path):
+        return FileResponse(open(file_path, 'rb'), as_attachment=True, filename='hsus_sku_template.csv')
+    else:
+        messages.error(request, 'Template file not found.')
+        return redirect('home') # Or a more appropriate redirect

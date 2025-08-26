@@ -30,6 +30,8 @@ class Invoice(models.Model):
     container = models.ForeignKey(Container, on_delete=models.SET_NULL, blank=True, null=True)
     po_number = models.CharField(max_length=100)
     currency = models.CharField(max_length=3, default="USD")
+    apply_db_hsus_rate = models.BooleanField(default=True, help_text="If False, manual HSUS rate will be used for this invoice.")
+    manual_hsus_rate_pct = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Manual HSUS rate for this invoice (e.g. 3.5 for 3.5%). Used if 'Apply DB HSUS Rate' is False.")
 
     def __str__(self):
         return self.invoice_number
