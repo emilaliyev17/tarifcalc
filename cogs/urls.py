@@ -15,4 +15,5 @@ urlpatterns = [
     path('cost-pool/add/', views.add_cost_pool, name='add_cost_pool'),
     path('recalculate/', views.recalculate_costs, name='recalculate_costs'),
     path('invoice/<int:invoice_pk>/toggle-hsus/', views.toggle_hsus, name='toggle_hsus'),
+    path('debug-base-dir/', views.debug_base_dir, name='debug_base_dir'),
 ]

@@ -257,6 +257,10 @@ def results(request):
     return render(request, 'results.html', {'results_data': results_data})
 
 @login_required
+def debug_base_dir(request):
+    return HttpResponse(settings.BASE_DIR)
+
+@login_required
 def download_hsus_sku_template(request):
     file_path = os.path.join(settings.BASE_DIR, 'cogs', 'static', 'cogs', 'hsus_sku_template.csv')
     if os.path.exists(file_path):
