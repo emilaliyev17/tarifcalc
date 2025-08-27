@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Budget vs Actual Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .message { padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        h1 { color: #333; }
+        form div { margin-bottom: 10px; }
+        label { display: inline-block; width: 150px; }
+        select, input[type="date"], button { padding: 8px; border-radius: 4px; border: 1px solid #ddd; }
+        button { background-color: #007bff; color: white; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .positive-variance { color: green; }
+        .negative-variance { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Budget vs Actual Report</h1>
+
+    {% if error_message %}
+        <div class="message error">{{ error_message }}</div>
+    {% endif %}
+
+    <form method="get">
+        {% csrf_token %}
+        <div>
+            <label for="budget">Select Budget:</label>
+            <select name="budget" id="budget" required>
+                <option value="">-- Select --</option>
+                {% for budget in budgets %}
+                    <option value="{{ budget.id }}" {% if budget.id|stringformat:"s" == selected_budget_id %}selected{% endif %}>{{ budget.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="company">Select Company:</label>
+            <select name="company" id="company" required>
+                <option value="">-- Select --</option>
+                {% for company in companies %}
+                    <option value="{{ company.id }}" {% if company.id|stringformat:"s" == selected_company_id %}selected{% endif %}>{{ company.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="period_date">Select Period:</label>
+            <input type="date" name="period_date" id="period_date" value="{{ selected_period_str }}" required>
+        </div>
+        <button type="submit">Generate Report</button>
+    </form>
+
+    {% if report_data %}
+        <h2>Report Data</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Account Name</th>
+                    <th>Category</th>
+                    <th>Actual Value</th>
+                    <th>Budget Value</th>
+                    <th>Variance</th>
+                    <th>Variance %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in report_data %}
+                    <tr>
+                        <td>{{ row.chart_of_account__account_name }}</td>
+                        <td>{{ row.chart_of_account__category }}</td>
+                        <td>{{ row.actual_value|floatformat:2 }}</td>
+                        <td>{{ row.budget_value|floatformat:2 }}</td>
+                        <td class="{% if row.variance > 0 %}positive-variance{% elif row.variance < 0 %}negative-variance{% endif %}">{{ row.variance|floatformat:2 }}</td>
+                        <td class="{% if row.variance_percent > 0 %}positive-variance{% elif row.variance_percent < 0 %}negative-variance{% endif %}">{{ row.variance_percent|floatformat:2 }}%</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% elif selected_budget_id and selected_company_id and selected_period_str %}
+        <p>No data found for the selected criteria.</p>
+    {% endif %}
+</body>
+</html>

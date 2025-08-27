@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'cogs',
     'whitenoise',
     'django_htmx',
+    'consolidation_app',
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Project Profitability</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+    </style>
+</head>
+<body>
+    <h1>Project Profitability Report</h1>
+
+    {% if profitability_data %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Project</th>
+                    <th>Revenue</th>
+                    <th>Direct Costs</th>
+                    <th>Allocated Overhead</th>
+                    <th>Gross Profit</th>
+                    <th>Net Profit</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for data in profitability_data %}
+                    <tr>
+                        <td>{{ data.project.name }}</td>
+                        <td>{{ data.revenue|floatformat:2 }}</td>
+                        <td>{{ data.direct_costs|floatformat:2 }}</td>
+                        <td>{{ data.allocated_overhead|floatformat:2 }}</td>
+                        <td>{{ data.gross_profit|floatformat:2 }}</td>
+                        <td>{{ data.net_profit|floatformat:2 }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No project profitability data available. Please ensure you have projects defined and financial data linked to them.</p>
+    {% endif %}
+</body>
+</html>
