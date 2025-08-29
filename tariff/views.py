@@ -58,3 +58,6 @@ def download_invoice_template(request):
 def download_sku_hts_template(request):
     csv = "sku,hts_code,origin_country,effective_from,effective_to,claimed_spi,rate_override_pct,override_reason"
     return HttpResponse(csv, content_type="text/csv")
+nfrom django.shortcuts import render
+ndef countries_view(request):
+    return render(request, 'tariff/countries.html')
