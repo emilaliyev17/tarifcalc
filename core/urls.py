@@ -26,3 +26,7 @@ urlpatterns = [
     path('api/', include('consolidation_app.urls')),
     path("tariff/", include("tariff.urls")),
 ]
+
+from django.conf import settings
+from django.conf.urls.static import static
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

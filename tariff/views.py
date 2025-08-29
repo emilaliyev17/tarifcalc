@@ -1,5 +1,6 @@
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
+from .forms_upload import UploadForm
 from .forms import EntryForm
 from .models import Entry
 
@@ -21,8 +22,24 @@ def shipment_entry_view(request):
 
 def upload_docs_view(request):
     if request.method == "POST":
-        return redirect("tariff_match")
-    return render(request, "tariff/upload_docs.html")
+        form = UploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            import os
+            from django.conf import settings
+            base = getattr(settings, 'MEDIA_ROOT', 'media')
+            tmp = os.path.join(base, 'tmp')
+            os.makedirs(tmp, exist_ok=True)
+            for field in ("cbp_7501_pdf","commercial_invoice","sku_hts_map"):
+                f = form.cleaned_data.get(field)
+                if f:
+                    dest = os.path.join(tmp, f.name)
+                    with open(dest, 'wb') as out:
+                        for chunk in f.chunks():
+                            out.write(chunk)
+            return redirect("tariff_match")
+        return render(request, "tariff/upload_docs.html", {"form": form})
+    form = UploadForm()
+    return render(request, "tariff/upload_docs.html", {"form": form})
 
 def match_sku_hts_view(request):
     return render(request, "tariff/match_sku_hts.html", {
