@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import HSUSCode, SKU, Container, Invoice, InvoiceLine, CostPool, AllocatedCost
+from .models import HSUSCode, SKU, Container, Invoice, InvoiceLine, CostPool, AllocatedCost, CalculationHistory, CalculationLineItem
  
 # Custom ModelAdmin for Invoice to display new fields
 class InvoiceAdmin(admin.ModelAdmin):
@@ -29,3 +29,16 @@ admin.site.register(Invoice, InvoiceAdmin)
 admin.site.register(InvoiceLine)
 admin.site.register(CostPool)
 admin.site.register(AllocatedCost)
+
+@admin.register(CalculationHistory)
+class CalculationHistoryAdmin(admin.ModelAdmin):
+    list_display = ['invoice_file_name', 'created_at', 'status', 'total_final_cost', 'total_items']
+    list_filter = ['status', 'created_at']
+    search_fields = ['invoice_file_name', 'notes']
+    date_hierarchy = 'created_at'
+
+@admin.register(CalculationLineItem)
+class CalculationLineItemAdmin(admin.ModelAdmin):
+    list_display = ['item_number', 'description', 'vendor_price', 'final_unit_cost']
+    list_filter = ['calculation__created_at']
+    search_fields = ['item_number', 'description', 'hsus_code']

@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from .models import Company, ChartOfAccount, FinancialData, SupportingDocument, AllocationRule, Project, Budget, BudgetFinancialData
 from .serializers import CompanySerializer, ChartOfAccountSerializer, ProjectSerializer, FinancialDataSerializer, BudgetSerializer, BudgetFinancialDataSerializer, AllocationRuleSerializer
 from rest_framework import generics
@@ -479,6 +479,11 @@ class FinancialDataList(generics.ListAPIView):
     queryset = FinancialData.objects.all()
     serializer_class = FinancialDataSerializer
 
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = "page_size"
+    max_page_size = 500
+
 class CompanyListCreateView(generics.ListCreateAPIView):
     queryset = Company.objects.all().order_by("id")
     serializer_class = CompanySerializer
@@ -487,11 +492,6 @@ class CompanyListCreateView(generics.ListCreateAPIView):
     filterset_fields = ["name"]
     search_fields = ["name"]
     ordering_fields = ["id", "name"]
-
-class StandardResultsSetPagination(PageNumberPagination):
-    page_size = 50
-    page_size_query_param = "page_size"
-    max_page_size = 500
 
 class ChartOfAccountListCreateView(generics.ListCreateAPIView):
     queryset = ChartOfAccount.objects.all().order_by("id")
@@ -546,3 +546,9 @@ class AllocationRuleListCreateView(generics.ListCreateAPIView):
     filterset_fields = ["name", "company", "source_account"]
     search_fields = ["name", "company__name", "source_account__account_name"]
     ordering_fields = ["id", "name", "company"]
+
+def budget_vs_actual_report(request):
+    return JsonResponse({"message": "Budget vs Actual Report Placeholder"})
+
+def variance_analysis(request):
+    return JsonResponse({"message": "Variance Analysis Placeholder"})

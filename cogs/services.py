@@ -10,13 +10,23 @@ class AllocationService:
             return Decimal(sum(line.unit_volume_cc * line.quantity for line in queryset))
         elif method == CostPool.Method.QUANTITY:
             return Decimal(sum(line.quantity for line in queryset))
+        elif method == CostPool.Method.PRICE_QUANTITY:
+            return sum(line.price_vendor * line.quantity for line in queryset)
         return Decimal(0)
 
     def allocate_cost(self, cost_pool):
         if cost_pool.scope == CostPool.Scope.INVOICE:
-            lines = InvoiceLine.objects.filter(invoice=cost_pool.invoice)
-        else: # CONTAINER
-            lines = InvoiceLine.objects.filter(invoice__container=cost_pool.container)
+            if cost_pool.invoice:
+                lines = InvoiceLine.objects.filter(invoice=cost_pool.invoice)
+            else:
+                lines = InvoiceLine.objects.all()
+        elif cost_pool.scope == CostPool.Scope.CONTAINER:
+            if cost_pool.container:
+                lines = InvoiceLine.objects.filter(invoice__container=cost_pool.container)
+            else:
+                lines = InvoiceLine.objects.all()
+        else: # ALL
+            lines = InvoiceLine.objects.all()
 
         normalizer = self.compute_normalizers(cost_pool.scope, cost_pool.method, lines)
 
@@ -40,6 +50,8 @@ class AllocationService:
                 share = Decimal(line.unit_volume_cc * line.quantity) / normalizer
             elif cost_pool.method == CostPool.Method.QUANTITY:
                 share = Decimal(line.quantity) / normalizer
+            elif cost_pool.method == CostPool.Method.PRICE_QUANTITY:
+                share = (line.price_vendor * line.quantity) / normalizer
             else:
                 share = Decimal(0)
             

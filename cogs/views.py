@@ -1,16 +1,19 @@
-from django.http import HttpResponse, FileResponse
+from django.http import HttpResponse, FileResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 import os
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from .forms import InvoiceUploadForm, HSUSCodeForm, SKUForm, CostPoolForm
 from .models import Invoice, InvoiceLine, SKU, Container, HSUSCode, CostPool, AllocatedCost
 from .services import AllocationService
 import csv
 import io
+import json
 from datetime import datetime
 from decimal import Decimal
+import pandas as pd
 
 @login_required
 def home(request):
@@ -229,19 +232,27 @@ def results(request):
     if date_filter:
         lines = lines.filter(invoice__invoice_date=date_filter)
 
+    # Get all unique names of other custom cost pools for dynamic columns
+    other_cost_pool_names = CostPool.objects.exclude(name__in=['Freight Cost', 'HSUS Tariff']).values_list('name', flat=True).distinct()
+
     # Prepare data for template
     results_data = []
     for line in lines:
         vendor_cost = line.price_vendor * line.quantity
-        freight_cost = line.allocatedcost_set.filter(cost_pool__name__iexact='freight cost').first()
+        freight_cost = line.allocatedcost_set.filter(cost_pool__name='Freight Cost').first()
         freight_cost_amount = freight_cost.amount_allocated if freight_cost else 0
         hsus_tariff = line.allocatedcost_set.filter(cost_pool__name='HSUS Tariff').first()
         hsus_tariff_amount = hsus_tariff.amount_allocated if hsus_tariff else 0
         
-        other_costs = line.allocatedcost_set.exclude(cost_pool__name__in=['Freight cost', 'HSUS Tariff'])
-        other_costs_total = sum(c.amount_allocated for c in other_costs)
+        # Collect all other allocated costs for this line
+        other_cost_allocations = {}
+        current_line_other_costs_total = Decimal(0)
+        for allocated_cost in line.allocatedcost_set.all():
+            if allocated_cost.cost_pool.name not in ['Freight Cost', 'HSUS Tariff']:
+                other_cost_allocations[allocated_cost.cost_pool.name] = allocated_cost.amount_allocated
+                current_line_other_costs_total += allocated_cost.amount_allocated
 
-        total_cost = vendor_cost + freight_cost_amount + hsus_tariff_amount + other_costs_total
+        total_cost = vendor_cost + freight_cost_amount + hsus_tariff_amount + current_line_other_costs_total
         unit_total_cost = (total_cost / line.quantity).quantize(Decimal('0.01')) if line.quantity > 0 else Decimal(0)
 
         results_data.append({
@@ -249,12 +260,27 @@ def results(request):
             'vendor_cost': vendor_cost,
             'freight_cost': freight_cost_amount,
             'hsus_tariff': hsus_tariff_amount,
-            'other_costs': other_costs,
+            'other_cost_allocations': other_cost_allocations, # New: detailed other costs
             'total_cost': total_cost,
             'unit_total_cost': unit_total_cost,
         })
 
-    return render(request, 'results.html', {'results_data': results_data})
+    # Get all freight costs for display
+    freight_costs = CostPool.objects.filter(name='Freight Cost')
+    total_freight_cost = sum(cost.amount_total for cost in freight_costs)
+
+    # Get all other custom costs for display
+    other_custom_costs = CostPool.objects.exclude(name__in=['Freight Cost', 'HSUS Tariff'])
+    total_other_custom_costs = sum(cost.amount_total for cost in other_custom_costs)
+
+    return render(request, 'results.html', {
+        'results_data': results_data,
+        'freight_costs': freight_costs,
+        'total_freight_cost': total_freight_cost,
+        'other_custom_costs': other_custom_costs, # Keep for the summary card
+        'total_other_custom_costs': total_other_custom_costs, # Keep for the summary card
+        'other_cost_pool_names': other_cost_pool_names, # New: for dynamic columns
+    })
 
 @login_required
 def debug_base_dir(request):
@@ -266,4 +292,181 @@ def download_hsus_sku_template(request):
     if os.path.exists(file_path):
         return FileResponse(open(file_path, 'rb'), as_attachment=True, filename='hsus_sku_template.csv')
     else:
-        return HttpResponse("Template file not found at: " + file_path, status=404)
+        messages.error(request, 'Template file not found.')
+        return redirect('home')
+
+@login_required
+@require_POST
+def add_freight_cost(request):
+    try:
+        data = json.loads(request.body)
+        total_freight_cost = float(data.get('total_freight_cost', 0))
+        shipment_company = data.get('shipment_company', '')
+        shipment_invoice = data.get('shipment_invoice', '')
+        
+        # Get invoice lines from database
+        invoice_lines = InvoiceLine.objects.all().select_related('invoice', 'sku')
+        
+        if not invoice_lines.exists():
+            return JsonResponse({'success': False, 'error': 'No invoice data found in database'})
+        
+        # Calculate total volume from database records
+        total_volume = 0
+        for line in invoice_lines:
+            if line.unit_volume_cc:
+                total_volume += float(line.unit_volume_cc) * line.quantity
+        
+        if total_volume == 0:
+            return JsonResponse({'success': False, 'error': 'Total volume is zero. Please ensure invoice items have volume data.'})
+        
+        # Create or update freight cost pool with company and invoice info
+        freight_pool, created = CostPool.objects.update_or_create(
+            name='Freight Cost',
+            defaults={
+                'scope': CostPool.Scope.CONTAINER,
+                'method': CostPool.Method.VOLUME,
+                'amount_total': Decimal(str(total_freight_cost)),
+                'shipment_company': shipment_company,
+                'shipment_invoice': shipment_invoice,
+                'auto_compute': False
+            }
+        )
+        
+        # Use AllocationService to distribute the cost
+        service = AllocationService()
+        service.allocate_cost(freight_pool)
+        
+        return JsonResponse({'success': True, 'message': f'Freight cost ${total_freight_cost} from {shipment_company or "Unknown"} distributed'})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+def delete_cost_pool(request, pk):
+    cost_pool = get_object_or_404(CostPool, pk=pk)
+    cost_pool.delete()
+    messages.success(request, f'Removed {cost_pool.name}: ${cost_pool.amount_total}')
+    
+    # Recalculate remaining costs
+    service = AllocationService()
+    for pool in CostPool.objects.filter(auto_compute=False):
+        service.allocate_cost(pool)
+    
+    return redirect('results')
+
+@login_required
+def hsus_bulk_upload(request):
+    if request.method == 'POST' and request.FILES.get('file'):
+        file = request.FILES['file']
+        
+        try:
+            # Read file based on extension
+            if file.name.endswith('.csv'):
+                df = pd.read_csv(file)
+            elif file.name.endswith(('.xlsx', '.xls')):
+                df = pd.read_excel(file)
+            else:
+                messages.error(request, 'Please upload a CSV or Excel file')
+                return redirect('hsus_code_list')
+            
+            # Process each row
+            created_count = 0
+            updated_count = 0
+            
+            for _, row in df.iterrows():
+                code = str(row.get('code', '')).strip()
+                if not code:
+                    continue
+                    
+                hsus, created = HSUSCode.objects.update_or_create(
+                    code=code,
+                    defaults={
+                        'description': str(row.get('description', '')),
+                        'rate_pct': float(row.get('rate_pct', 0))
+                    }
+                )
+                
+                if created:
+                    created_count += 1
+                else:
+                    updated_count += 1
+            
+            messages.success(request, f'Successfully imported {created_count} new codes and updated {updated_count} existing codes')
+            
+        except Exception as e:
+            messages.error(request, f'Error processing file: {str(e)}')
+        
+        return redirect('hsus_code_list')
+    
+    return redirect('hsus_code_list')
+
+@login_required
+def download_hsus_template(request):
+    """Download HSUS upload template"""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="hsus_template.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['code', 'description', 'rate_pct'])
+    writer.writerow(['6109.10.00', 'Example: T-shirts cotton', '16.5'])
+    writer.writerow(['6203.42.40', 'Example: Mens trousers', '16.6'])
+    writer.writerow(['', 'Add your codes below', ''])
+    
+    return response
+
+@login_required
+def export_hsus_codes(request):
+    """Export all current HSUS codes"""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="hsus_codes_export.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['code', 'description', 'rate_pct'])
+    
+    for hsus in HSUSCode.objects.all().order_by('code'):
+        writer.writerow([hsus.code, hsus.description, hsus.rate_pct])
+    
+    return response
+
+@login_required
+@require_POST
+def add_custom_cost(request):
+    try:
+        data = json.loads(request.body)
+        cost_name = data.get('cost_name')
+        cost_amount = float(data.get('cost_amount', 0))
+        allocation_scope = data.get('allocation_scope')
+        allocation_method = data.get('allocation_method')
+        
+        # Map the form values to model choices
+        scope_map = {
+            'container': CostPool.Scope.CONTAINER,
+            'invoice': CostPool.Scope.INVOICE,
+            'all': CostPool.Scope.ALL
+        }
+        
+        method_map = {
+            'volume': CostPool.Method.VOLUME,
+            'price': CostPool.Method.PRICE,
+            'quantity': CostPool.Method.QUANTITY,
+            'weight': CostPool.Method.EQUALLY,  # Use EQUALLY for weight for now
+            'price_quantity': CostPool.Method.PRICE_QUANTITY
+        }
+        
+        # Create cost pool
+        cost_pool = CostPool.objects.create(
+            name=cost_name,
+            scope=scope_map.get(allocation_scope, CostPool.Scope.ALL),
+            method=method_map.get(allocation_method, CostPool.Method.PRICE),
+            amount_total=Decimal(str(cost_amount)),
+            auto_compute=False
+        )
+        
+        # Allocate the cost
+        service = AllocationService()
+        service.allocate_cost(cost_pool)
+        
+        return JsonResponse({'success': True, 'message': f'{cost_name} cost of ${cost_amount} has been allocated'})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

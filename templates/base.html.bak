@@ -367,6 +367,7 @@
 
 .results-table {
     width: 100%;
+    min-width: 1200px; /* Ensure minimum width */
 }
 
 /* Sticky header on scroll */
@@ -603,3 +604,221 @@ function applyNewCost() {
             return cookieValue;
         }
     </script>
+</style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">NEXUS COGS</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'invoice_upload' %}">Upload Invoice</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'sku_list' %}">Manage SKUs</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'hsus_code_list' %}">Manage HSUS Codes</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'results' %}">Results</a></li>
+                </ul>
+                <div class="ms-auto d-flex align-items-center">
+                    <button class="btn btn-outline-secondary btn-sm" id="themeToggle" onclick="toggleTheme()" title="Toggle dark/light mode">
+                        <span id="themeIcon">🌙</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Theme toggle functionality
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+        }
+        
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+        
+        function updateThemeIcon(theme) {
+            const icon = document.getElementById('themeIcon');
+            if (icon) {
+                icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+            }
+        }
+        
+        // Initialize theme on page load
+        document.addEventListener('DOMContentLoaded', initTheme);
+
+        function addFreightCost() {
+            // Open the simplified freight cost modal
+            var freightModal = new bootstrap.Modal(document.getElementById('freightCostModal'));
+            freightModal.show();
+        }
+
+        function addNewCost() {
+    // Open the add new cost modal
+    var modal = new bootstrap.Modal(document.getElementById('addNewCostModal'));
+    modal.show();
+}
+
+function applyNewCost() {
+    const costName = document.getElementById('costName').value;
+    const costAmount = document.getElementById('costAmount').value;
+    const scope = document.getElementById('allocationScope').value;
+    const method = document.getElementById('allocationMethod').value;
+    
+    if (!costName || !costAmount || !scope || !method) {
+        alert('Please fill in all fields');
+        return;
+    }
+    
+    fetch('/add-custom-cost/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            cost_name: costName,
+            cost_amount: parseFloat(costAmount),
+            allocation_scope: scope,
+            allocation_method: method
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('addNewCostModal')).hide();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    });
+}
+
+        function applyFreightCost() {
+            const totalFreight = document.getElementById('totalFreightCostInput').value;
+            const shipmentCompany = document.getElementById('shipmentCompany').value;
+            const shipmentInvoice = document.getElementById('shipmentInvoice').value;
+            
+            if (!totalFreight || totalFreight <= 0) {
+                alert('Please enter a valid freight cost amount');
+                return;
+            }
+            
+            fetch('/add-freight-cost/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    total_freight_cost: parseFloat(totalFreight),
+                    shipment_company: shipmentCompany,
+                    shipment_invoice: shipmentInvoice
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('freightCostModal')).hide();
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            });
+        }
+
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Make columns resizable
+    const table = document.getElementById('resultsTable');
+    if (!table) return;
+    
+    const resizers = table.querySelectorAll('.resizer');
+    let currentResizer = null;
+    let nextCol = null;
+    let currentCol = null;
+    let x = 0;
+    let currentColWidth = 0;
+    
+    resizers.forEach(resizer => {
+        resizer.addEventListener('mousedown', mouseDownHandler);
+    });
+    
+    function mouseDownHandler(e) {
+        currentResizer = e.target;
+        currentCol = currentResizer.parentElement;
+        nextCol = currentCol.nextElementSibling;
+        x = e.clientX;
+        currentColWidth = currentCol.offsetWidth;
+        
+        document.addEventListener('mousemove', mouseMoveHandler);
+        document.addEventListener('mouseup', mouseUpHandler);
+        
+        e.preventDefault();
+    }
+    
+    function mouseMoveHandler(e) {
+        if (!currentResizer) return;
+        
+        const dx = e.clientX - x;
+        const newWidth = currentColWidth + dx;
+        if (newWidth > 50) { // Set a minimum width for columns
+            currentCol.style.width = newWidth + 'px';
+        }
+    }
+    
+    function mouseUpHandler() {
+        currentResizer = null;
+        currentCol = null;
+        nextCol = null;
+        x = 0;
+        currentColWidth = 0;
+        
+        document.removeEventListener('mousemove', mouseMoveHandler);
+        document.removeEventListener('mouseup', mouseUpHandler);
+    }
+});
+</script>
+</body>
+</html>
+</body>
+</html>
