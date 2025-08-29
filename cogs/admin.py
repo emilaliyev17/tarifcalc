@@ -1,18 +1,18 @@
 from django.contrib import admin
-from .models import HSUSCode, SKU, Container, Invoice, InvoiceLine, CostPool, AllocatedCost, CalculationHistory, CalculationLineItem
+from .models import HTSUSCode, SKU, Container, Invoice, InvoiceLine, CostPool, AllocatedCost, CalculationHistory, CalculationLineItem
  
 # Custom ModelAdmin for Invoice to display new fields
 class InvoiceAdmin(admin.ModelAdmin):
-    list_display = ('invoice_number', 'invoice_date', 'container', 'po_number', 'currency', 'apply_db_hsus_rate', 'manual_hsus_rate_pct')
-    list_filter = ('invoice_date', 'currency', 'apply_db_hsus_rate')
+    list_display = ('invoice_number', 'invoice_date', 'container', 'po_number', 'currency', 'apply_db_htsus_rate', 'manual_htsus_rate_pct')
+    list_filter = ('invoice_date', 'currency', 'apply_db_htsus_rate')
     search_fields = ('invoice_number', 'po_number')
     fieldsets = (
         (None, {
             'fields': ('invoice_number', 'invoice_date', 'container', 'po_number', 'currency')
         }),
-        ('HSUS Rate Settings', {
-            'fields': ('apply_db_hsus_rate', 'manual_hsus_rate_pct'),
-            'description': 'Control how HSUS rates are applied for this invoice.'
+        ('HTSUS Rate Settings', {
+            'fields': ('apply_db_htsus_rate', 'manual_htsus_rate_pct'),
+            'description': 'Control how HTSUS rates are applied for this invoice.'
         }),
     )
 
@@ -22,7 +22,7 @@ try:
 except admin.sites.NotRegistered:
     pass
 # Register your models here.
-admin.site.register(HSUSCode)
+admin.site.register(HTSUSCode)
 admin.site.register(SKU)
 admin.site.register(Container)
 admin.site.register(Invoice, InvoiceAdmin)
@@ -41,4 +41,4 @@ class CalculationHistoryAdmin(admin.ModelAdmin):
 class CalculationLineItemAdmin(admin.ModelAdmin):
     list_display = ['item_number', 'description', 'vendor_price', 'final_unit_cost']
     list_filter = ['calculation__created_at']
-    search_fields = ['item_number', 'description', 'hsus_code']
+    search_fields = ['item_number', 'description', 'htsus_code']

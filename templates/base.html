@@ -441,6 +441,26 @@
     padding-left: 10px;
     padding-right: 10px;
 }
+/* Full width results */
+.results-page .container-fluid {
+    max-width: 100%;
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+.results-page .table-responsive {
+    overflow-x: auto;
+}
+
+.results-page table {
+    width: 100%;
+    min-width: 1400px; /* Ensure minimum width for all columns */
+}
+
+/* Remove any max-width constraints */
+.results-page {
+    width: 100%;
+}
 </style>
 </head>
 <body>
@@ -455,7 +475,7 @@
                     <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Home</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'invoice_upload' %}">Upload Invoice</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'sku_list' %}">Manage SKUs</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'hsus_code_list' %}">Manage HSUS Codes</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'htsus_code_list' %}">Manage HTSUS Codes</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'results' %}">Results</a></li>
                 
 <li class="nav-item dropdown">
@@ -520,11 +540,7 @@
         // Initialize theme on page load
         document.addEventListener('DOMContentLoaded', initTheme);
 
-        function addFreightCost() {
-            // Open the simplified freight cost modal
-            var freightModal = new bootstrap.Modal(document.getElementById('freightCostModal'));
-            freightModal.show();
-        }
+        
 
         function addNewCost() {
     // Open the add new cost modal
@@ -568,37 +584,41 @@ function applyNewCost() {
 }
 
         function applyFreightCost() {
-            const totalFreight = document.getElementById('totalFreightCostInput').value;
-            const shipmentCompany = document.getElementById('shipmentCompany').value;
-            const shipmentInvoice = document.getElementById('shipmentInvoice').value;
-            
-            if (!totalFreight || totalFreight <= 0) {
-                alert('Please enter a valid freight cost amount');
-                return;
-            }
-            
-            fetch('/add-freight-cost/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({
-                    total_freight_cost: parseFloat(totalFreight),
-                    shipment_company: shipmentCompany,
-                    shipment_invoice: shipmentInvoice
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    bootstrap.Modal.getInstance(document.getElementById('freightCostModal')).hide();
-                    location.reload();
-                } else {
-                    alert('Error: ' + (data.error || 'Unknown error'));
-                }
-            });
-        }
+    const totalFreight = document.getElementById('totalFreightCostInput').value;
+    const shipmentCompany = document.getElementById('shipmentCompany').value;
+    const shipmentInvoice = document.getElementById('shipmentInvoice').value;
+    
+    if (!totalFreight || totalFreight <= 0) {
+        alert('Please enter a valid freight cost amount');
+        return;
+    }
+    
+    fetch('/add-freight-cost/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            total_freight_cost: parseFloat(totalFreight),
+            shipment_company: shipmentCompany,
+            shipment_invoice: shipmentInvoice
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('freightCostModal')).hide();
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        } 
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to apply freight cost');
+    });
+}
 
         // Helper function to get CSRF token
         function getCookie(name) {

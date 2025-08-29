@@ -21,7 +21,7 @@ class Command(BaseCommand):
             'Invoice',
             'Container',
             'SKU',
-            'HSUSCode',
+            'HTSUSCode',
         ]
 
         for model_name in models_to_clear:

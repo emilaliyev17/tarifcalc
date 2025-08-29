@@ -1,5 +1,5 @@
 from django import forms
-from .models import Entry
+from .models import Entry, Country
 
 MODE_CHOICES = [
     ("ocean", "ocean"),
@@ -9,12 +9,20 @@ MODE_CHOICES = [
 ]
 
 class EntryForm(forms.ModelForm):
+    country_origin = forms.ModelChoiceField(
+        queryset=Country.objects.all().order_by('name'),
+        empty_label="Select a country...",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        to_field_name='code',
+        label="Country origin"
+    )
+    
     class Meta:
         model = Entry
         fields = [
-            "mode",           # влияет на HMF (только ocean)
-            "claimed_spi",    # может занулить тариф (напр., USMCA)
-            "country_origin", # влияет на duty/ремедии
+            "mode",
+            "claimed_spi",
+            "country_origin",  # Keep this in fields list
         ]
         widgets = {
             "mode": forms.Select(choices=MODE_CHOICES),

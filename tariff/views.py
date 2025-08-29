@@ -14,9 +14,11 @@ def shipment_entry_view(request):
         if form.is_valid():
             form.save()
             return redirect("tariff_upload")
-        return render(request, "tariff/shipment_entry_form.html", {"form": form})
-    form = EntryForm()
-    return render(request, "tariff/shipment_entry_form.html", {"form": form})
+        countries = Country.objects.all().order_by('name') # Added
+        return render(request, "tariff/shipment_entry_form.html", {'countries': countries}) # Modified context
+    countries = Country.objects.all().order_by('name') # Added
+    
+    return render(request, "tariff/shipment_entry_form.html", {'countries': countries}) # Modified context
 
 def upload_docs_view(request):
     if request.method == "POST":

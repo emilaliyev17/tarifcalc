@@ -1,4 +1,4 @@
-from .models import InvoiceLine, CostPool, AllocatedCost, HSUSCode, SKU
+from .models import InvoiceLine, CostPool, AllocatedCost, HTSUSCode, SKU
 from decimal import Decimal
 
 class AllocationService:
@@ -62,10 +62,10 @@ class AllocationService:
 
         AllocatedCost.objects.bulk_create(allocations)
 
-    def compute_hsus_for_invoice(self, invoice):
-        hsus_cost_pool, created = CostPool.objects.get_or_create(
+    def compute_htsus_for_invoice(self, invoice):
+        htsus_cost_pool, created = CostPool.objects.get_or_create(
             invoice=invoice,
-            name="HSUS Tariff",
+            name="HTSUS Tariff",
             defaults={
                 'scope': CostPool.Scope.INVOICE,
                 'method': CostPool.Method.PRICE,
@@ -77,17 +77,17 @@ class AllocationService:
         total_tariff = Decimal(0)
         for line in invoice.lines.all():
             # Modified logic for rate determination
-            if not invoice.apply_db_hsus_rate and invoice.manual_hsus_rate_pct is not None:
-                rate = invoice.manual_hsus_rate_pct
+            if not invoice.apply_db_htsus_rate and invoice.manual_htsus_rate_pct is not None:
+                rate = invoice.manual_htsus_rate_pct
             else:
-                rate = line.sku.hsus_rate_pct or (line.sku.hsus_code.rate_pct if line.sku.hsus_code else Decimal(0))
+                rate = line.sku.htsus_rate_pct or (line.sku.htsus_code.rate_pct if line.sku.htsus_code else Decimal(0))
 
             tariff_amount = (line.price_vendor * line.quantity) * (rate / Decimal(100))
             total_tariff += tariff_amount
 
-        hsus_cost_pool.amount_total = total_tariff
-        hsus_cost_pool.save()
-        self.allocate_cost(hsus_cost_pool)
+        htsus_cost_pool.amount_total = total_tariff
+        htsus_cost_pool.save()
+        self.allocate_cost(htsus_cost_pool)
 
     def round_and_fix_pennies(self, total_amount, allocations):
         total_allocated = Decimal(0)

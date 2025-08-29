@@ -1,6 +1,6 @@
 from django.db import models
 
-class HSUSCode(models.Model):
+class HTSUSCode(models.Model):
     code = models.CharField(max_length=20, unique=True)
     description = models.TextField()
     rate_pct = models.DecimalField(max_digits=5, decimal_places=2, help_text="e.g. 3.5 means 3.5%")
@@ -11,8 +11,8 @@ class HSUSCode(models.Model):
 class SKU(models.Model):
     sku = models.CharField(max_length=100, unique=True)
     name = models.CharField(max_length=255, blank=True, null=True)
-    hsus_code = models.ForeignKey(HSUSCode, on_delete=models.SET_NULL, blank=True, null=True)
-    hsus_rate_pct = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Overrides HSUSCode rate if present")
+    htsus_code = models.ForeignKey(HTSUSCode, on_delete=models.SET_NULL, blank=True, null=True)
+    htsus_rate_pct = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Overrides HTSUSCode rate if present")
 
     def __str__(self):
         return self.sku
@@ -30,8 +30,8 @@ class Invoice(models.Model):
     container = models.ForeignKey(Container, on_delete=models.SET_NULL, blank=True, null=True)
     po_number = models.CharField(max_length=100)
     currency = models.CharField(max_length=3, default="USD")
-    apply_db_hsus_rate = models.BooleanField(default=True, help_text="If False, manual HSUS rate will be used for this invoice.")
-    manual_hsus_rate_pct = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Manual HSUS rate for this invoice (e.g. 3.5 for 3.5%). Used if 'Apply DB HSUS Rate' is False.")
+    apply_db_htsus_rate = models.BooleanField(default=True, help_text="If False, manual HTSUS rate will be used for this invoice.")
+    manual_htsus_rate_pct = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Manual HTSUS rate for this invoice (e.g. 3.5 for 3.5%). Used if 'Apply DB HTSUS Rate' is False.")
 
     def __str__(self):
         return self.invoice_number
@@ -63,7 +63,7 @@ class CostPool(models.Model):
     amount_total = models.DecimalField(max_digits=10, decimal_places=2)
     container = models.ForeignKey(Container, on_delete=models.CASCADE, blank=True, null=True)
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, blank=True, null=True)
-    auto_compute = models.BooleanField(default=False, help_text="True for system pools like HSUS tariff")
+    auto_compute = models.BooleanField(default=False, help_text="True for system pools like HTSUS tariff")
 
     def __str__(self):
         return self.name

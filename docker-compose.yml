@@ -16,7 +16,7 @@ services:
       - DEBUG=True
 
   db:
-    image: postgres:13
+    image: postgres:14
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:

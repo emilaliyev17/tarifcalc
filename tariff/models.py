@@ -75,6 +75,8 @@ class Entry(models.Model):
     country_export = models.CharField(max_length=2, blank=True)
     claimed_spi = models.CharField(max_length=10, blank=True)
     notes = models.TextField(blank=True)
+    entered_value = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    gross_weight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
 class EntryLine(models.Model):
     entry = models.ForeignKey(Entry, on_delete=models.CASCADE)

@@ -1,6 +1,6 @@
 import pytest
 from decimal import Decimal
-from cogs.models import Invoice, InvoiceLine, CostPool, AllocatedCost, SKU, Container, HSUSCode
+from cogs.models import Invoice, InvoiceLine, CostPool, AllocatedCost, SKU, Container, HTSUSCode
 from cogs.services import AllocationService
 
 @pytest.mark.django_db

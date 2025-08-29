@@ -1,0 +1,6 @@
+feat: HTSUS naming consistency and authentication bypass
+
+- Renamed `templates/hsus_code_list.html` to `templates/htsus_code_list.html` for HTSUS naming consistency.
+- Updated `cogs/views.py` to remove `@login_required` decorators, allowing access without authentication for development.
+- Resolved `django.db.utils.OperationalError: no such table: cogs_htsuscode` by correcting the `cogs/migrations/0004_add_htsus_code_to_sku.py` migration (making it empty) and re-applying all migrations.
+- Applied a script to fix potential decimal conversion errors in `InvoiceLine` data.

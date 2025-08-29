@@ -4,11 +4,7 @@
   <h2>Import Entry Form</h2>
   <form method="post">
     {% csrf_token %}
-    {% if form %}<div class="mb-3">{{ form.as_p }}</div>{% else %}<div class="row g-3">
-      <div class="col-md-4">
-        <label class="form-label">Entry Number <span title="CBP 7501 Box 1">(?)</span></label>
-        <input name="entry_number" class="form-control">
-      </div>
+    <div class="row g-3">
       <div class="col-md-4">
         <label class="form-label">Entry Date <span title="CBP 7501 Box 7">(?)</span></label>
         <input type="date" name="entry_date" class="form-control">
@@ -27,26 +23,26 @@
         </select>
       </div>
       <div class="col-md-4">
-        <label class="form-label">Port of Entry <span title="CBP 7501 Box 20">(?)</span></label>
-        <input name="port_of_entry" class="form-control">
-      </div>
-      <div class="col-md-4">
         <label class="form-label">Claimed Trade Program (SPI) <span title="Column 33.A Special, General Notes">(?)</span></label>
         <input name="claimed_spi" class="form-control" placeholder="S, S+, A">
       </div>
       <div class="col-md-4">
-        <label class="form-label">Country of Origin <span title="CBP 7501 Box 10">(?)</span></label>
-        <input name="country_origin" class="form-control" placeholder="CN">
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Country of Export <span title="CBP 7501 Box 14">(?)</span></label>
-        <input name="country_export" class="form-control" placeholder="CN">
-      </div>
+    <label class="form-label">Country of Origin</label>
+    <input type="text" name="country_origin" class="form-control" placeholder="e.g., US" required>
+</div>
+<div class="col-md-4">
+    <label class="form-label">Entered Value <span title="CBP 7501 Box 32.A - Customs value for duty calculation">(?)</span></label>
+    <input type="number" name="entered_value" class="form-control" step="0.01" placeholder="USD amount" required>
+</div>
+<div class="col-md-4">
+    <label class="form-label">Gross Weight <span title="CBP 7501 Box 30.A - Total weight in KG">(?)</span></span</label>
+    <input type="number" name="gross_weight" class="form-control" step="0.01" placeholder="Weight in KG" required>
+</div>
       <div class="col-12">
         <label class="form-label">Notes</label>
         <textarea name="notes" class="form-control" rows="2"></textarea>
       </div>
-    </div>{% endif %}
+    </div>
     <div class="mt-3">
       <button class="btn btn-primary" name="action" value="save">Save document</button>
       <button class="btn btn-success" name="action" value="save_continue">Save and continue</button>

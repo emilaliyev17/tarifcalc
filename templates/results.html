@@ -1,228 +1,242 @@
 {% extends 'base.html' %}
 {% load cogs_extras %}
 {% block content %}
-<div class="container-fluid">  <!-- Changed from container to container-fluid -->
+<style>
+/* Force full width for results page */
+.results-full-width {
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    padding: 0 15px;
+}
+.results-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+.results-table {
+    width: 100%;
+    min-width: 1400px;
+}
+</style>
+
+<div class="results-full-width">
     <h1>Results</h1>
     <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2></h2>
-    <div>
-        <!-- Replace the existing Add Cost button with this dropdown -->
-<div class="dropdown" style="display: inline-block;">
-    <button class="btn btn-primary dropdown-toggle" type="button" id="addCostDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-        + Add Cost
-    </button>
-    <ul class="dropdown-menu" aria-labelledby="addCostDropdown">
-        <li><a class="dropdown-item" href="#" onclick="addFreightCost()">Freight Cost</a></li>
-        <li><a class="dropdown-item" href="#" onclick="addNewCost()">Add New</a></li>
-    </ul>
-</div>
-        <a href="{% url 'recalculate_costs' %}" class="btn btn-secondary">Recalculate</a>
-        <a href="#" class="btn btn-success">Download CSV</a>
-    </div>
-</div>
-
-{% if freight_costs %}
-<div class="card mb-3">
-    <div class="card-body">
-        <h5 class="card-title">Applied Freight Costs</h5>
-        {% for cost in freight_costs %}
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <div>
-                <strong>Freight Cost #{{ forloop.counter }}:</strong> ${{ cost.amount_total|floatformat:2 }}
-                {% if cost.shipment_company %}
-                    <br><small>Company: {{ cost.shipment_company }}</small>
-                {% endif %}
-                {% if cost.shipment_invoice %}
-                    <br><small>Invoice: {{ cost.shipment_invoice }}</small>
-                {% endif %}
+        <h2></h2>
+        <div>
+            <div class="dropdown" style="display: inline-block;">
+                <button class="btn btn-primary dropdown-toggle" type="button" id="addCostDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    + Add Cost
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="addCostDropdown">
+                    <li><a class="dropdown-item" href="#" onclick="addFreightCost()">Freight Cost</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="addNewCost()">Add New</a></li>
+                </ul>
             </div>
-            <form method="post" action="/delete-cost-pool/{{ cost.id }}/" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this freight cost?')">Remove</button>
-            </form>
+            <a href="{% url 'recalculate_costs' %}" class="btn btn-secondary">Recalculate</a>
+            <a href="#" class="btn btn-success">Download CSV</a>
         </div>
-        {% endfor %}
-        <hr>
-        <strong>Total Freight Cost: ${{ total_freight_cost|floatformat:2 }}</strong>
     </div>
-</div>
-{% endif %}
 
-{% if other_custom_costs %}
-<div class="card mb-3">
-    <div class="card-body">
-        <h5 class="card-title">Applied Other Costs</h5>
-        {% for cost in other_custom_costs %}
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <div>
-                <strong>{{ cost.name }}:</strong> ${{ cost.amount_total|floatformat:2 }}
-                <br><small>Scope: {{ cost.get_scope_display }}</small>
-                <br><small>Method: {{ cost.get_method_display }}</small>
+    {% if freight_costs %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Applied Freight Costs</h5>
+            {% for cost in freight_costs %}
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <strong>Freight Cost #{{ forloop.counter }}:</strong> ${{ cost.amount_total|floatformat:2 }}
+                    {% if cost.shipment_company %}
+                        <br><small>Company: {{ cost.shipment_company }}</small>
+                    {% endif %}
+                    {% if cost.shipment_invoice %}
+                        <br><small>Invoice: {{ cost.shipment_invoice }}</small>
+                    {% endif %}
+                </div>
+                <form method="post" action="/delete-cost-pool/{{ cost.id }}/" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this freight cost?')">Remove</button>
+                </form>
             </div>
-            <form method="post" action="/delete-cost-pool/{{ cost.id }}/" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this custom cost?')">Remove</button>
-            </form>
-        </div>
-        {% endfor %}
-        <hr>
-        <strong>Total Other Custom Costs: ${{ total_other_custom_costs|floatformat:2 }}</strong>
-    </div>
-</div>
-{% endif %}
-
-<form method="get" class="row g-3 mb-4">
-    <div class="col-md-4">
-        <label for="container" class="form-label">Container</label>
-        <input type="text" class="form-control" name="container" id="container" value="{{ request.GET.container }}">
-    </div>
-    <div class="col-md-4">
-        <label for="invoice" class="form-label">Invoice</label>
-        <input type="text" class="form-control" name="invoice" id="invoice" value="{{ request.GET.invoice }}">
-    </div>
-    <div class="col-md-3">
-        <label for="date" class="form-label">Date</label>
-        <input type="date" class="form-control" name="date" id="date" value="{{ request.GET.date }}">
-    </div>
-    <div class="col-md-1 d-flex align-items-end">
-        <button class="btn btn-primary" type="submit">Filter</button>
-    </div>
-</form>
-
-<div class="results-table-container">
-    <table class="table table-striped table-hover results-table" id="resultsTable">
-        <thead>
-            <tr>
-                <th class="nowrap">Invoice#<div class="resizer"></div></th>
-                <th class="date-column">Date<div class="resizer"></div></th>
-                <th class="nowrap">Container ID<div class="resizer"></div></th>
-                <th class="nowrap">PO#<div class="resizer"></div></th>
-                <th class="sku-column">SKU<div class="resizer"></div></th>
-                <th>Quantity<div class="resizer"></div></th>
-                <th>Vendor Price<div class="resizer"></div></th>
-                <th>Vendor Cost<div class="resizer"></div></th>
-                <th>Freight Cost<div class="resizer"></div></th>
-                <th>HSUS Tariff<div class="resizer"></div></th>
-                {% for cost_name in other_cost_pool_names %}
-                <th>{{ cost_name }}<div class="resizer"></div></th>
-                {% endfor %}
-                <th>TOTAL COST<div class="resizer"></div></th>
-                <th>Unit Total Cost<div class="resizer"></div></th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for result in results_data %}
-            <tr>
-                <td class="nowrap">{{ result.line.invoice.invoice_number }}</td>
-                <td class="date-column">{{ result.line.invoice.invoice_date|date:"m/d/Y" }}</td>
-                <td class="nowrap">{{ result.line.invoice.container.container_id }}</td>
-                <td class="nowrap">{{ result.line.invoice.po_number }}</td>
-                <td class="sku-column" title="{{ result.line.sku.sku }}">{{ result.line.sku.sku }}</td>
-                <td>{{ result.line.quantity }}</td>
-                <td>${{ result.line.price_vendor|floatformat:2 }}</td>
-                <td>${{ result.vendor_cost|floatformat:2 }}</td>
-                <td>${{ result.freight_cost|floatformat:2 }}</td>
-                <td>${{ result.hsus_tariff|floatformat:2 }}</td>
-                {% for cost_name in other_cost_pool_names %}
-                <td>${{ result.other_cost_allocations|get_item:cost_name|floatformat:2 }}</td>
-                {% endfor %}
-                <td><strong>${{ result.total_cost|floatformat:2 }}</strong></td>
-                <td>${{ result.unit_total_cost|floatformat:2 }}</td>
-                <td>
-                    <form method="post" action="{% url 'toggle_hsus' result.line.invoice.pk %}" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-info">Toggle HSUS</button>
-                    </form>
-                </td>
-            </tr>
             {% endfor %}
-        </tbody>
-    </table>
-</div>
+            <hr>
+            <strong>Total Freight Cost: ${{ total_freight_cost|floatformat:2 }}</strong>
+        </div>
+    </div>
+    {% endif %}
 
-<!-- Replace the existing freightCostModal with this simpler version -->
-<div class="modal fade" id="freightCostModal" tabindex="-1" aria-labelledby="freightCostModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="freightCostModalLabel">Add Freight Cost</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="freightCostForm">
-                    <div class="mb-3">
-                        <label for="totalFreightCostInput" class="form-label">Total Freight Cost ($)</label>
-                        <input type="number" class="form-control" id="totalFreightCostInput" name="total_freight_cost" step="0.01" placeholder="Enter total freight cost" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="shipmentCompany" class="form-label">Shipment Company Name</label>
-                        <input type="text" class="form-control" id="shipmentCompany" name="shipment_company" placeholder="Enter shipping company name">
-                    </div>
-                    <div class="mb-3">
-                        <label for="shipmentInvoice" class="form-label">Invoice Number</label>
-                        <input type="text" class="form-control" id="shipmentInvoice" name="shipment_invoice" placeholder="Enter invoice number">
-                    </div>
-                    <div class="alert alert-info">
-                        <small>The freight cost will be distributed proportionally based on each item's volume from the uploaded invoice data.</small>
-                    </div>
+    {% if other_custom_costs %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Applied Other Costs</h5>
+            {% for cost in other_custom_costs %}
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <strong>{{ cost.name }}:</strong> ${{ cost.amount_total|floatformat:2 }}
+                    <br><small>Scope: {{ cost.get_scope_display }}</small>
+                    <br><small>Method: {{ cost.get_method_display }}</small>
+                </div>
+                <form method="post" action="/delete-cost-pool/{{ cost.id }}/" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this custom cost?')">Remove</button>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="applyFreightCost()">Apply Freight Cost</button>
+            {% endfor %}
+            <hr>
+            <strong>Total Other Custom Costs: ${{ total_other_custom_costs|floatformat:2 }}</strong>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-md-4">
+            <label for="container" class="form-label">Container</label>
+            <input type="text" class="form-control" name="container" id="container" value="{{ request.GET.container }}">
+        </div>
+        <div class="col-md-4">
+            <label for="invoice" class="form-label">Invoice</label>
+            <input type="text" class="form-control" name="invoice" id="invoice" value="{{ request.GET.invoice }}">
+        </div>
+        <div class="col-md-3">
+            <label for="date" class="form-label">Date</label>
+            <input type="date" class="form-control" name="date" id="date" value="{{ request.GET.date }}">
+        </div>
+        <div class="col-md-1 d-flex align-items-end">
+            <button class="btn btn-primary" type="submit">Filter</button>
+        </div>
+    </form>
+
+    <div class="results-table-wrapper">
+        <table class="table table-striped table-hover results-table" id="resultsTable">
+            <thead>
+                <tr>
+                    <th class="nowrap">Invoice#</th>
+                    <th class="date-column">Date</th>
+                    <th class="nowrap">Container ID</th>
+                    <th class="nowrap">PO#</th>
+                    <th class="sku-column">SKU</th>
+                    <th>Quantity</th>
+                    <th>Vendor Price</th>
+                    <th>Vendor Cost</th>
+                    <th>Freight Cost</th>
+                    <th>HTSUS Tariff</th>
+                    {% for cost_name in other_cost_pool_names %}
+                    <th>{{ cost_name }}</th>
+                    {% endfor %}
+                    <th>TOTAL COST</th>
+                    <th>Unit Total Cost</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in results_data %}
+                <tr>
+                    <td class="nowrap">{{ result.line.invoice.invoice_number }}</td>
+                    <td class="date-column">{{ result.line.invoice.invoice_date|date:"m/d/Y" }}</td>
+                    <td class="nowrap">{{ result.line.invoice.container.container_id }}</td>
+                    <td class="nowrap">{{ result.line.invoice.po_number }}</td>
+                    <td class="sku-column" title="{{ result.line.sku.sku }}">{{ result.line.sku.sku }}</td>
+                    <td>{{ result.line.quantity }}</td>
+                    <td>${{ result.line.price_vendor|floatformat:2 }}</td>
+                    <td>${{ result.vendor_cost|floatformat:2 }}</td>
+                    <td>${{ result.freight_cost|floatformat:2 }}</td>
+                    <td>${{ result.htsus_tariff|floatformat:2 }}</td>
+                    {% for cost_name in other_cost_pool_names %}
+                    <td>${{ result.other_cost_allocations|get_item:cost_name|floatformat:2 }}</td>
+                    {% endfor %}
+                    <td><strong>${{ result.total_cost|floatformat:2 }}</strong></td>
+                    <td>${{ result.unit_total_cost|floatformat:2 }}</td>
+                    <td>
+                        <form method="post" action="{% url 'toggle_htsus' result.line.invoice.pk %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-info">Toggle HTSUS</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Freight Cost Modal -->
+    <div class="modal fade" id="freightCostModal" tabindex="-1" aria-labelledby="freightCostModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="freightCostModalLabel">Add Freight Cost</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="freightCostForm">
+                        <div class="mb-3">
+                            <label for="totalFreightCostInput" class="form-label">Total Freight Cost ($)</label>
+                            <input type="number" class="form-control" id="totalFreightCostInput" name="total_freight_cost" step="0.01" placeholder="Enter total freight cost" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="shipmentCompany" class="form-label">Shipment Company Name</label>
+                            <input type="text" class="form-control" id="shipmentCompany" name="shipment_company" placeholder="Enter shipping company name">
+                        </div>
+                        <div class="mb-3">
+                            <label for="shipmentInvoice" class="form-label">Invoice Number</label>
+                            <input type="text" class="form-control" id="shipmentInvoice" name="shipment_invoice" placeholder="Enter invoice number">
+                        </div>
+                        <div class="alert alert-info">
+                            <small>The freight cost will be distributed proportionally based on each item's volume from the uploaded invoice data.</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="applyFreightCost()">Apply Freight Cost</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Add this modal after the freightCostModal -->
-<div class="modal fade" id="addNewCostModal" tabindex="-1" aria-labelledby="addNewCostModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addNewCostModalLabel">Add New Cost</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="addNewCostForm">
-                    <div class="mb-3">
-                        <label for="costName" class="form-label">Cost Name</label>
-                        <input type="text" class="form-control" id="costName" name="cost_name" placeholder="e.g., Customs, Storage, Insurance" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="costAmount" class="form-label">Total Amount ($)</label>
-                        <input type="number" class="form-control" id="costAmount" name="cost_amount" step="0.01" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="allocationScope" class="form-label">Allocate By</label>
-                        <select class="form-select" id="allocationScope" name="allocation_scope" required>
-                            <option value="">Select allocation scope...</option>
-                            <option value="container">By Container</option>
-                            <option value="invoice">By Invoice</option>
-                            <option value="all">Across All Items</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="allocationMethod" class="form-label">Distribution Method</label>
-                        <select class="form-select" id="allocationMethod" name="allocation_method" required>
-                            <option value="">Select distribution method...</option>
-                            <option value="volume">By Volume</option>
-                            <option value="price_quantity">By Price * Quantity</option>
-                        </select>
-                    </div>
-                    <div class="alert alert-info">
-                        <small>The cost will be distributed proportionally based on your selections.</small>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="applyNewCost()">Apply Cost</button>
+    <!-- Add New Cost Modal -->
+    <div class="modal fade" id="addNewCostModal" tabindex="-1" aria-labelledby="addNewCostModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addNewCostModalLabel">Add New Cost</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addNewCostForm">
+                        <div class="mb-3">
+                            <label for="costName" class="form-label">Cost Name</label>
+                            <input type="text" class="form-control" id="costName" name="cost_name" placeholder="e.g., Customs, Storage, Insurance" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="costAmount" class="form-label">Total Amount ($)</label>
+                            <input type="number" class="form-control" id="costAmount" name="cost_amount" step="0.01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="allocationScope" class="form-label">Allocate By</label>
+                            <select class="form-select" id="allocationScope" name="allocation_scope" required>
+                                <option value="">Select allocation scope...</option>
+                                <option value="container">By Container</option>
+                                <option value="invoice">By Invoice</option>
+                                <option value="all">Across All Items</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="allocationMethod" class="form-label">Distribution Method</label>
+                            <select class="form-select" id="allocationMethod" name="allocation_method" required>
+                                <option value="">Select distribution method...</option>
+                                <option value="volume">By Volume</option>
+                                <option value="price_quantity">By Price * Quantity</option>
+                            </select>
+                        </div>
+                        <div class="alert alert-info">
+                            <small>The cost will be distributed proportionally based on your selections.</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="applyNewCost()">Apply Cost</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
-</div>
-{% endblock %}
-
+</div> {% endblock %}
