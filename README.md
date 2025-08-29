@@ -7,7 +7,7 @@ This is a web application to calculate the true cost of goods for an e-commerce 
 -   Accurately calculate Total Cost for each invoice line by combining vendor price with additional costs.
 -   Allocate multiple cost types with different methods (price, volume, quantity).
 -   Import invoices from CSV files.
--   Manage HSUS tariff codes.
+-   Manage HTSUS tariff codes.
 -   Export results to CSV.
 -   User authentication.
 
