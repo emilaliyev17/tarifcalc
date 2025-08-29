@@ -23,9 +23,9 @@ def calculate_duties_view(request, entry_id: int):
     return HttpResponse("Calculation result placeholder")
 
 def download_invoice_template(request):
-    csv = "invoice_no,sku,description,qty,uom,unit_price,line_total,country_originn"
+    csv = "invoice_no,sku,description,qty,uom,unit_price,line_total,country_origin"
     return HttpResponse(csv, content_type="text/csv")
 
 def download_sku_hts_template(request):
-    csv = "sku,hts_code,origin_country,effective_from,effective_to,claimed_spi,rate_override_pct,override_reasonn"
+    csv = "sku,hts_code,origin_country,effective_from,effective_to,claimed_spi,rate_override_pct,override_reason"
     return HttpResponse(csv, content_type="text/csv")
