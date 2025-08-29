@@ -1,5 +1,65 @@
-{%% extends 'base.html' %%}
-{%% block content %%}
-  <h1>Countries Directory</h1>
-  <p>Here you will manage country list for origin/export mapping.</p>
-{%% endblock %%}
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>Countries Management</h1>
+    
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">Add New Country</div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label>Country Name</label>
+                            <input type="text" name="name" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Country Code (2 letters)</label>
+                            <input type="text" name="code" class="form-control" maxlength="2" required>
+                        </div>
+                        <button type="submit" name="add_country" class="btn btn-primary">Add Country</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">Countries List</div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Code</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for country in countries %}
+                            <tr>
+                                <td>{{ country.name }}</td>
+                                <td>{{ country.code }}</td>
+                                <td>
+                                    <form method="post" style="display:inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="country_id" value="{{ country.id }}">
+                                        <button type="submit" name="delete_country" class="btn btn-sm btn-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3">No countries added yet</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,13 +1,12 @@
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
-from .forms import EntryForm
-from .models import Entry
-from .forms_upload import UploadForm
-from .forms import EntryForm
-from .models import Entry
+from django.conf import settings
+from django.contrib import messages
+import os
 
 from .forms import EntryForm
-from .models import Entry
+from .forms_upload import UploadForm
+from .models import Entry, Country
 
 def shipment_entry_view(request):
     if request.method == "POST":
@@ -58,6 +57,22 @@ def download_invoice_template(request):
 def download_sku_hts_template(request):
     csv = "sku,hts_code,origin_country,effective_from,effective_to,claimed_spi,rate_override_pct,override_reason"
     return HttpResponse(csv, content_type="text/csv")
-nfrom django.shortcuts import render
-ndef countries_view(request):
-    return render(request, 'tariff/countries.html')
+from django.shortcuts import render
+def countries_view(request):
+    if request.method == 'POST':
+        if 'add_country' in request.POST:
+            name = request.POST.get('name')
+            code = request.POST.get('code', '').upper()
+            if name and code:
+                Country.objects.get_or_create(name=name, code=code)
+                messages.success(request, f'Country {name} added')
+        
+        elif 'delete_country' in request.POST:
+            country_id = request.POST.get('country_id')
+            Country.objects.filter(id=country_id).delete()
+            messages.success(request, 'Country deleted')
+        
+        return redirect('tariff_countries')
+    
+    countries = Country.objects.all()
+    return render(request, 'tariff/countries.html', {'countries': countries})
