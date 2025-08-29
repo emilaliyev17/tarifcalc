@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 
-{% block title %}Manage HSUS Codes - NEXUS COGS Calculator{% endblock %}
+{% block title %}Manage HTSUS Codes - NEXUS COGS Calculator{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-md-4">
-        <h2 class="mb-4">Add HSUS Code</h2>
+        <h2 class="mb-4">Add HTSUS Code</h2>
         <form method="post">
             {% csrf_token %}
             {{ form.as_p }}
@@ -15,26 +15,26 @@
         <!-- Add after the Add Code form -->
         <div class="card mt-4">
             <div class="card-header">
-                <h5>Bulk Upload HSUS Codes</h5>
+                <h5>Bulk Upload HTSUS Codes</h5>
             </div>
             <div class="card-body">
-                <form method="post" enctype="multipart/form-data" action="{% url 'hsus_bulk_upload' %}">
+                <form method="post" enctype="multipart/form-data" action="{% url 'htsus_bulk_upload' %}">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label for="hsus_file" class="form-label">Upload CSV or Excel file</label>
-                        <input type="file" class="form-control" id="hsus_file" name="file" accept=".csv,.xlsx,.xls" required>
+                        <label for="htsus_file" class="form-label">Upload CSV or Excel file</label>
+                        <input type="file" class="form-control" id="htsus_file" name="file" accept=".csv,.xlsx,.xls" required>
                         <small class="text-muted">File must contain columns: code, description, rate_pct</small>
                     </div>
-                    <button type="submit" class="btn btn-success">Upload HSUS Codes</button>
-                    <a href="{% url 'download_hsus_template' %}" class="btn btn-secondary">Download Template</a>
+                    <button type="submit" class="btn btn-success">Upload HTSUS Codes</button>
+                    <a href="{% url 'download_htsus_template' %}" class="btn btn-secondary">Download Template</a>
                 </form>
             </div>
         </div>
     </div>
     <div class="col-md-8">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>HSUS Codes</h2>
-            <a href="{% url 'export_hsus_codes' %}" class="btn btn-info">Export Current Codes</a>
+            <h2>HTSUS Codes</h2>
+            <a href="{% url 'export_htsus_codes' %}" class="btn btn-info">Export Current Codes</a>
         </div>
         <table class="table">
             <thead>
@@ -52,7 +52,7 @@
                     <td>{{ code.description }}</td>
                     <td>{{ code.rate_pct }}</td>
                     <td>
-                        <a href="{% url 'hsus_code_delete' code.pk %}" class="btn btn-danger btn-sm">Delete</a>
+                        <a href="{% url 'htsus_code_delete' code.pk %}" class="btn btn-danger btn-sm">Delete</a>
                     </td>
                 </tr>
                 {% endfor %}

@@ -5,8 +5,8 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
-from .forms import InvoiceUploadForm, HSUSCodeForm, SKUForm, CostPoolForm
-from .models import Invoice, InvoiceLine, SKU, Container, HSUSCode, CostPool, AllocatedCost
+from .forms import InvoiceUploadForm, HTSUSCodeForm, SKUForm, CostPoolForm
+from .models import Invoice, InvoiceLine, SKU, Container, HTSUSCode, CostPool, AllocatedCost
 from .services import AllocationService
 import csv
 import io
@@ -15,11 +15,11 @@ from datetime import datetime
 from decimal import Decimal
 import pandas as pd
 
-@login_required
+
 def home(request):
     return render(request, 'home.html')
 
-@login_required
+
 def invoice_upload(request):
     if request.method == 'POST':
         form = InvoiceUploadForm(request.POST, request.FILES)
@@ -78,7 +78,7 @@ def invoice_upload(request):
         form = InvoiceUploadForm()
     return render(request, 'invoice_upload.html', {'form': form})
 
-@login_required
+
 def sku_list(request):
     skus = SKU.objects.all()
     query = request.GET.get('query')
@@ -86,7 +86,7 @@ def sku_list(request):
         skus = skus.filter(sku__icontains=query)
     return render(request, 'sku_list.html', {'skus': skus})
 
-@login_required
+
 def sku_edit(request, pk):
     sku = get_object_or_404(SKU, pk=pk)
     if request.method == 'POST':
@@ -99,7 +99,7 @@ def sku_edit(request, pk):
         form = SKUForm(instance=sku)
     return render(request, 'sku_edit.html', {'form': form, 'sku': sku})
 
-@login_required
+
 def sku_upload(request):
     if request.method == 'POST':
         csv_file = request.FILES['file']
@@ -120,17 +120,17 @@ def sku_upload(request):
                 sku, created = SKU.objects.get_or_create(sku=sku_val)
                 sku.name = row.get('name', sku.name)
                 
-                hsus_code_str = row.get('hsus_code')
-                if hsus_code_str:
+                htsus_code_str = row.get('htsus_code')
+                if htsus_code_str:
                     try:
-                        hsus_code = HSUSCode.objects.get(code=hsus_code_str)
-                        sku.hsus_code = hsus_code
-                    except HSUSCode.DoesNotExist:
-                        messages.warning(request, f"HSUS code {hsus_code_str} not found for SKU {sku_val}. Please create it first.")
+                        htsus_code = HTSUSCode.objects.get(code=htsus_code_str)
+                        sku.htsus_code = htsus_code
+                    except HTSUSCode.DoesNotExist:
+                        messages.warning(request, f"HTSUS code {htsus_code_str} not found for SKU {sku_val}. Please create it first.")
 
-                rate_override = row.get('hsus_rate_pct')
+                rate_override = row.get('htsus_rate_pct')
                 if rate_override:
-                    sku.hsus_rate_pct = Decimal(rate_override)
+                    sku.htsus_rate_pct = Decimal(rate_override)
                 
                 sku.save()
 
@@ -142,46 +142,46 @@ def sku_upload(request):
         return redirect('sku_list')
     return redirect('sku_list')
 
-@login_required
+
 def sku_download(request):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="skus.csv"'
 
     writer = csv.writer(response)
-    writer.writerow(['sku', 'name', 'hsus_code', 'hsus_rate_pct'])
+    writer.writerow(['sku', 'name', 'htsus_code', 'htsus_rate_pct'])
 
     for sku in SKU.objects.all():
         writer.writerow([
             sku.sku,
             sku.name,
-            sku.hsus_code.code if sku.hsus_code else '',
-            sku.hsus_rate_pct if sku.hsus_rate_pct is not None else ''
+            sku.htsus_code.code if sku.htsus_code else '',
+            sku.htsus_rate_pct if sku.htsus_rate_pct is not None else ''
         ])
 
     return response
 
-@login_required
-def hsus_code_list(request):
+
+def htsus_code_list(request):
     if request.method == 'POST':
-        form = HSUSCodeForm(request.POST)
+        form = HTSUSCodeForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, 'HSUS code added successfully')
-            return redirect('hsus_code_list')
+            messages.success(request, 'HTSUS code added successfully')
+            return redirect('htsus_code_list')
     else:
-        form = HSUSCodeForm()
+        form = HTSUSCodeForm()
     
-    codes = HSUSCode.objects.all()
-    return render(request, 'hsus_code_list.html', {'form': form, 'codes': codes})
+    codes = HTSUSCode.objects.all()
+    return render(request, 'htsus_code_list.html', {'form': form, 'codes': codes})
 
-@login_required
-def hsus_code_delete(request, pk):
-    code = get_object_or_404(HSUSCode, pk=pk)
+
+def htsus_code_delete(request, pk):
+    code = get_object_or_404(HTSUSCode, pk=pk)
     code.delete()
-    messages.success(request, 'HSUS code deleted successfully')
-    return redirect('hsus_code_list')
+    messages.success(request, 'HTSUS code deleted successfully')
+    return redirect('htsus_code_list')
 
-@login_required
+
 def add_cost_pool(request):
     if request.method == 'POST':
         form = CostPoolForm(request.POST)
@@ -193,30 +193,30 @@ def add_cost_pool(request):
         form = CostPoolForm()
     return render(request, 'add_cost_pool.html', {'form': form})
 
-@login_required
+
 def recalculate_costs(request):
     service = AllocationService()
     for cost_pool in CostPool.objects.filter(auto_compute=False):
         service.allocate_cost(cost_pool)
     for invoice in Invoice.objects.all():
-        service.compute_hsus_for_invoice(invoice)
+        service.compute_htsus_for_invoice(invoice)
     messages.success(request, 'Costs recalculated successfully')
     return redirect('results')
 
-@login_required
-def toggle_hsus(request, invoice_pk):
+
+def toggle_htsus(request, invoice_pk):
     invoice = get_object_or_404(Invoice, pk=invoice_pk)
-    hsus_pool = CostPool.objects.filter(invoice=invoice, name="HSUS Tariff").first()
-    if hsus_pool:
-        hsus_pool.delete()
-        messages.success(request, 'HSUS tariff disabled for this invoice')
+    htsus_pool = CostPool.objects.filter(invoice=invoice, name="HTSUS Tariff").first()
+    if htsus_pool:
+        htsus_pool.delete()
+        messages.success(request, 'HTSUS tariff disabled for this invoice')
     else:
         service = AllocationService()
-        service.compute_hsus_for_invoice(invoice)
-        messages.success(request, 'HSUS tariff enabled for this invoice')
+        service.compute_htsus_for_invoice(invoice)
+        messages.success(request, 'HTSUS tariff enabled for this invoice')
     return redirect('results')
 
-@login_required
+
 def results(request):
     lines = InvoiceLine.objects.all().select_related('invoice', 'sku').prefetch_related('allocatedcost_set__cost_pool')
     
@@ -233,7 +233,7 @@ def results(request):
         lines = lines.filter(invoice__invoice_date=date_filter)
 
     # Get all unique names of other custom cost pools for dynamic columns
-    other_cost_pool_names = CostPool.objects.exclude(name__in=['Freight Cost', 'HSUS Tariff']).values_list('name', flat=True).distinct()
+    other_cost_pool_names = CostPool.objects.exclude(name__in=['Freight Cost', 'HTSUS Tariff']).values_list('name', flat=True).distinct()
 
     # Prepare data for template
     results_data = []
@@ -241,25 +241,25 @@ def results(request):
         vendor_cost = line.price_vendor * line.quantity
         freight_cost = line.allocatedcost_set.filter(cost_pool__name='Freight Cost').first()
         freight_cost_amount = freight_cost.amount_allocated if freight_cost else 0
-        hsus_tariff = line.allocatedcost_set.filter(cost_pool__name='HSUS Tariff').first()
-        hsus_tariff_amount = hsus_tariff.amount_allocated if hsus_tariff else 0
+        htsus_tariff = line.allocatedcost_set.filter(cost_pool__name='HTSUS Tariff').first()
+        htsus_tariff_amount = htsus_tariff.amount_allocated if htsus_tariff else 0
         
         # Collect all other allocated costs for this line
         other_cost_allocations = {}
         current_line_other_costs_total = Decimal(0)
         for allocated_cost in line.allocatedcost_set.all():
-            if allocated_cost.cost_pool.name not in ['Freight Cost', 'HSUS Tariff']:
+            if allocated_cost.cost_pool.name not in ['Freight Cost', 'HTSUS Tariff']:
                 other_cost_allocations[allocated_cost.cost_pool.name] = allocated_cost.amount_allocated
                 current_line_other_costs_total += allocated_cost.amount_allocated
 
-        total_cost = vendor_cost + freight_cost_amount + hsus_tariff_amount + current_line_other_costs_total
+        total_cost = vendor_cost + freight_cost_amount + htsus_tariff_amount + current_line_other_costs_total
         unit_total_cost = (total_cost / line.quantity).quantize(Decimal('0.01')) if line.quantity > 0 else Decimal(0)
 
         results_data.append({
             'line': line,
             'vendor_cost': vendor_cost,
             'freight_cost': freight_cost_amount,
-            'hsus_tariff': hsus_tariff_amount,
+            'htsus_tariff': htsus_tariff_amount,
             'other_cost_allocations': other_cost_allocations, # New: detailed other costs
             'total_cost': total_cost,
             'unit_total_cost': unit_total_cost,
@@ -270,7 +270,7 @@ def results(request):
     total_freight_cost = sum(cost.amount_total for cost in freight_costs)
 
     # Get all other custom costs for display
-    other_custom_costs = CostPool.objects.exclude(name__in=['Freight Cost', 'HSUS Tariff'])
+    other_custom_costs = CostPool.objects.exclude(name__in=['Freight Cost', 'HTSUS Tariff'])
     total_other_custom_costs = sum(cost.amount_total for cost in other_custom_costs)
 
     return render(request, 'results.html', {
@@ -282,20 +282,20 @@ def results(request):
         'other_cost_pool_names': other_cost_pool_names, # New: for dynamic columns
     })
 
-@login_required
+
 def debug_base_dir(request):
     return HttpResponse(settings.BASE_DIR)
 
-@login_required
-def download_hsus_sku_template(request):
-    file_path = os.path.join(settings.BASE_DIR, 'cogs', 'static', 'cogs', 'hsus_sku_template.csv')
+
+def download_htsus_sku_template(request):
+    file_path = os.path.join(settings.BASE_DIR, 'cogs', 'static', 'cogs', 'htsus_sku_template.csv')
     if os.path.exists(file_path):
-        return FileResponse(open(file_path, 'rb'), as_attachment=True, filename='hsus_sku_template.csv')
+        return FileResponse(open(file_path, 'rb'), as_attachment=True, filename='htsus_sku_template.csv')
     else:
         messages.error(request, 'Template file not found.')
         return redirect('home')
 
-@login_required
+
 @require_POST
 def add_freight_cost(request):
     try:
@@ -341,7 +341,7 @@ def add_freight_cost(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
-@login_required
+
 def delete_cost_pool(request, pk):
     cost_pool = get_object_or_404(CostPool, pk=pk)
     cost_pool.delete()
@@ -354,8 +354,8 @@ def delete_cost_pool(request, pk):
     
     return redirect('results')
 
-@login_required
-def hsus_bulk_upload(request):
+
+def htsus_bulk_upload(request):
     if request.method == 'POST' and request.FILES.get('file'):
         file = request.FILES['file']
         
@@ -367,7 +367,7 @@ def hsus_bulk_upload(request):
                 df = pd.read_excel(file)
             else:
                 messages.error(request, 'Please upload a CSV or Excel file')
-                return redirect('hsus_code_list')
+                return redirect('htsus_code_list')
             
             # Process each row
             created_count = 0
@@ -378,7 +378,7 @@ def hsus_bulk_upload(request):
                 if not code:
                     continue
                     
-                hsus, created = HSUSCode.objects.update_or_create(
+                htsus, created = HTSUSCode.objects.update_or_create(
                     code=code,
                     defaults={
                         'description': str(row.get('description', '')),
@@ -396,15 +396,15 @@ def hsus_bulk_upload(request):
         except Exception as e:
             messages.error(request, f'Error processing file: {str(e)}')
         
-        return redirect('hsus_code_list')
+        return redirect('htsus_code_list')
     
-    return redirect('hsus_code_list')
+    return redirect('htsus_code_list')
 
-@login_required
-def download_hsus_template(request):
-    """Download HSUS upload template"""
+
+def download_htsus_template(request):
+    """Download HTSUS upload template"""
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="hsus_template.csv"'
+    response['Content-Disposition'] = 'attachment; filename="htsus_template.csv"'
     
     writer = csv.writer(response)
     writer.writerow(['code', 'description', 'rate_pct'])
@@ -414,21 +414,21 @@ def download_hsus_template(request):
     
     return response
 
-@login_required
-def export_hsus_codes(request):
-    """Export all current HSUS codes"""
+
+def export_htsus_codes(request):
+    """Export all current HTSUS codes"""
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="hsus_codes_export.csv"'
+    response['Content-Disposition'] = 'attachment; filename="htsus_codes_export.csv"'
     
     writer = csv.writer(response)
     writer.writerow(['code', 'description', 'rate_pct'])
     
-    for hsus in HSUSCode.objects.all().order_by('code'):
-        writer.writerow([hsus.code, hsus.description, hsus.rate_pct])
+    for htsus in HTSUSCode.objects.all().order_by('code'):
+        writer.writerow([htsus.code, htsus.description, htsus.rate_pct])
     
     return response
 
-@login_required
+
 @require_POST
 def add_custom_cost(request):
     try:
