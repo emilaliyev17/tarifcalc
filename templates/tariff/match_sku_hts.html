@@ -6,12 +6,13 @@
     <div class="col-md-5">
       <h5>Invoice Lines</h5>
       <table class="table table-sm">
-        <thead><tr><th>SKU</th><th>Description</th><th>Qty</th><th>Value</th></tr></thead>
+        <thead><tr><th>SKU</th><th>Description</th><th>Origin</th><th>Qty</th><th>Value</th></tr></thead>
         <tbody>
           {% for il in invoice_lines %}
           <tr>
             <td>{{ il.sku }}</td>
             <td>{{ il.description }}</td>
+            <td>{{ il.country_origin }}</td>
             <td>{{ il.qty }} {{ il.uom }}</td>
             <td>{{ il.line_total }}</td>
           </tr>
@@ -28,12 +29,13 @@
     <div class="col-md-5">
       <h5>7501 HTS Lines</h5>
       <table class="table table-sm">
-        <thead><tr><th>HTS</th><th>Desc</th><th>Entered Value</th><th>Rate</th></tr></thead>
+        <thead><tr><th>HTS</th><th>Desc</th><th>Origin</th><th>Entered Value</th><th>Rate</th></tr></thead>
         <tbody>
           {% for el in entry_lines %}
           <tr>
             <td>{{ el.hts_code }}</td>
             <td>{{ el.description }}</td>
+            <td>{{ el.origin_country }}</td>
             <td>{{ el.entered_value }}</td>
             <td>{{ el.hts_rate }}</td>
           </tr>
