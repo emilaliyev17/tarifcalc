@@ -3,9 +3,16 @@ from django.db import models
 RATE_TYPES = (("adval","Ad Valorem"), ("spec","Specific"), ("compound","Compound"))
 
 class Country(models.Model):
-    iso2 = models.CharField(max_length=2, unique=True)
-    name = models.CharField(max_length=100)
-    def __str__(self): return self.iso2
+    name = models.CharField(max_length=100, unique=True)
+    code = models.CharField(max_length=2, unique=True)  # ISO code
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['name']
+        verbose_name_plural = "Countries"
+    
+    def __str__(self):
+        return f"{self.name} ({self.code})"
 
 class HTSCode(models.Model):
     code = models.CharField(max_length=12, unique=True)  # allow dotted or undotted
