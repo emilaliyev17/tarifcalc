@@ -540,15 +540,14 @@
         // Initialize theme on page load
         document.addEventListener('DOMContentLoaded', initTheme);
 
-        
-
         function addNewCost() {
-    // Open the add new cost modal
     var modal = new bootstrap.Modal(document.getElementById('addNewCostModal'));
     modal.show();
 }
 
-function applyNewCost() {
+        
+
+        function applyNewCost() {
     const costName = document.getElementById('costName').value;
     const costAmount = document.getElementById('costAmount').value;
     const scope = document.getElementById('allocationScope').value;
@@ -581,6 +580,11 @@ function applyNewCost() {
             alert('Error: ' + (data.error || 'Unknown error'));
         }
     });
+}
+
+function addFreightCost() {
+    var freightModal = new bootstrap.Modal(document.getElementById('freightCostModal'));
+    freightModal.show();
 }
 
         function applyFreightCost() {
