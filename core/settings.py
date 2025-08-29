@@ -44,6 +44,9 @@ INSTALLED_APPS = [
     'django_htmx',
     'consolidation_app',
     'tariff',
+    'rest_framework',
+    'dja
+go_filters',
 ]
 
 MIDDLEWARE = [
