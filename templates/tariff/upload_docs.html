@@ -6,15 +6,15 @@
     {% csrf_token %}
     {% if form %}<div class="mb-3">{{ form.as_p }}</div>{% else %}<div class="row g-3">
       <div class="col-md-6">
-        <label class="form-label">CBP Form 7501 (PDF) <span title="HTS lines, entered value, duties">(?)</span></label>
+        <label class="form-label">CBP Form 7501 (PDF) <span title="Upload the US Customs Entry Summary (CBP Form 7501) as PDF. This is the whole document (not a single box). ">(?)</span></label>
         <input type="file" name="cbp_7501_pdf" class="form-control" accept=".pdf">
       </div>
       <div class="col-md-6">
-        <label class="form-label">Commercial Invoice (CSV) <span title="invoice_no, sku, qty, uom, unit_price, line_total, origin">(?)</span></label>
+        <label class="form-label">Commercial Invoice (CSV) <span title="Supplier commercial invoice. Required columns: invoice_no, sku, description (optional), qty, uom, unit_price, line_total, origin (ISO2). CSV recommended.">(?)</span></label>
         <input type="file" name="commercial_invoice" class="form-control" accept=".csv">
       </div>
       <div class="col-12">
-        <label class="form-label">SKU to HTS Mapping (CSV) <span title="sku, hts_code, origin_country, ...">(?)</span></label>
+        <label class="form-label">SKU to HTS Mapping (CSV) <span title="Mapping of your SKUs to Harmonized Tariff Schedule codes. Required columns: sku, hts_code, origin_country (ISO2).">(?)</span></label>
         <input type="file" name="sku_hts_map" class="form-control" accept=".csv">
       </div>
     </div>{% endif %}
@@ -23,8 +23,8 @@
       <a href="{% url 'tariff_match' %}" class="btn btn-outline-secondary">Go to Matching</a>
     </div>
     <div class="mt-3">
-      <a class="btn btn-link" href="{% url 'tariff_download_invoice_template' %}">Download invoice CSV template</a>
-      <a class="btn btn-link" href="{% url 'tariff_download_sku_hts_template' %}">Download SKU to HTS template</a>
+      <a href="{% url 'tariff_download_invoice_template' %}">Download invoice CSV template</a>
+      <a href="{% url 'tariff_download_sku_hts_template' %}">Download SKU to HTS template</a>
     </div>
   </form>
 </div>
