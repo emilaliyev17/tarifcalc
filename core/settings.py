@@ -38,7 +38,7 @@ CSRF_TRUSTED_ORIGINS = [
 if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
-    # SECURE_SSL_REDIRECT = True  # Removed - Render handles SSL
+    # SECURE_SSL_REDIRECT = True  # REMOVED - causes redirect loop on Render
 
 
 # Application definition
