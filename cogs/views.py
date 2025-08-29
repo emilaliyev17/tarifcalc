@@ -470,3 +470,73 @@ def add_custom_cost(request):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+def download_results_csv(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="results_export.csv"'
+    writer = csv.writer(response)
+
+    # Get all unique names of other custom cost pools for dynamic columns
+    other_cost_pool_names = list(CostPool.objects.exclude(name__in=['Freight Cost', 'HTSUS Tariff']).values_list('name', flat=True).distinct())
+
+    # Write header row
+    header = [
+        'Invoice#', 'Date', 'Container ID', 'PO#', 'SKU', 
+        'Quantity', 'Vendor Price', 'Vendor Cost', 'Freight Cost',
+        'HTSUS Tariff'
+    ] + other_cost_pool_names + [
+        'TOTAL COST', 'Unit Total Cost'
+    ]
+    writer.writerow(header)
+
+    lines = InvoiceLine.objects.all().select_related('invoice', 'sku').prefetch_related('allocatedcost_set__cost_pool')
+
+    # Filtering logic from results view
+    container_filter = request.GET.get('container')
+    invoice_filter = request.GET.get('invoice')
+    date_filter = request.GET.get('date')
+
+    if container_filter:
+        lines = lines.filter(invoice__container__container_id=container_filter)
+    if invoice_filter:
+        lines = lines.filter(invoice__invoice_number=invoice_filter)
+    if date_filter:
+        lines = lines.filter(invoice__invoice_date=date_filter)
+
+    for line in lines:
+        vendor_cost = line.price_vendor * line.quantity
+        
+        allocations = {ac.cost_pool.name: ac.amount_allocated for ac in line.allocatedcost_set.all()}
+
+        freight_cost_amount = allocations.get('Freight Cost', Decimal(0))
+        htsus_tariff_amount = allocations.get('HTSUS Tariff', Decimal(0))
+        
+        other_costs_values = []
+        current_line_other_costs_total = Decimal(0)
+        for cost_name in other_cost_pool_names:
+            cost_value = allocations.get(cost_name, Decimal(0))
+            other_costs_values.append(f'${cost_value:.2f}')
+            current_line_other_costs_total += cost_value
+
+        total_cost = vendor_cost + freight_cost_amount + htsus_tariff_amount + current_line_other_costs_total
+        unit_total_cost = (total_cost / line.quantity) if line.quantity > 0 else Decimal(0)
+
+        row = [
+            line.invoice.invoice_number,
+            line.invoice.invoice_date.strftime('%m/%d/%Y') if line.invoice.invoice_date else '',
+            line.invoice.container.container_id if line.invoice.container else '',
+            line.invoice.po_number,
+            line.sku.sku if line.sku else '',
+            line.quantity,
+            f'${line.price_vendor:.2f}' if line.price_vendor else '$0.00',
+            f'${vendor_cost:.2f}',
+            f'${freight_cost_amount:.2f}',
+            f'${htsus_tariff_amount:.2f}',
+        ] + other_costs_values + [
+            f'${total_cost:.2f}',
+            f'${unit_total_cost:.2f}'
+        ]
+        writer.writerow(row)
+
+    return response

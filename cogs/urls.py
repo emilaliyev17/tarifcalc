@@ -15,6 +15,7 @@ urlpatterns = [
     path('htsus/template/', views.download_htsus_template, name='download_htsus_template'),
     path('htsus/export/', views.export_htsus_codes, name='export_htsus_codes'),
     path('results/', views.results, name='results'),
+    path('download-results-csv/', views.download_results_csv, name='download_results_csv'),
     path('cost-pool/add/', views.add_cost_pool, name='add_cost_pool'),
     path('delete-cost-pool/<int:pk>/', views.delete_cost_pool, name='delete_cost_pool'),
     path('recalculate/', views.recalculate_costs, name='recalculate_costs'),
