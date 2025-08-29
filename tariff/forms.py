@@ -12,26 +12,14 @@ class EntryForm(forms.ModelForm):
     class Meta:
         model = Entry
         fields = [
-            "entry_number",
-            "entry_date",
-            "import_date",
-            "mode",
-            "port_of_entry",
-            "claimed_spi",
-            "country_origin",
-            "country_export",
-            "notes",
+            "mode",           # влияет на HMF (только ocean)
+            "claimed_spi",    # может занулить тариф (напр., USMCA)
+            "country_origin", # влияет на duty/ремедии
         ]
         widgets = {
-            "entry_date": forms.DateInput(attrs={"type": "date"}),
-            "import_date": forms.DateInput(attrs={"type": "date"}),
             "mode": forms.Select(choices=MODE_CHOICES),
         }
 
     def clean_country_origin(self):
         v = self.cleaned_data.get("country_origin", "")
-        return v.strip().upper()
-
-    def clean_country_export(self):
-        v = self.cleaned_data.get("country_export", "")
         return v.strip().upper()

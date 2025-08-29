@@ -1,5 +1,7 @@
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
+from .forms import EntryForm
+from .models import Entry
 from .forms_upload import UploadForm
 from .forms import EntryForm
 from .models import Entry
@@ -12,12 +14,9 @@ def shipment_entry_view(request):
         form = EntryForm(request.POST)
         if form.is_valid():
             form.save()
-            # redirect for both buttons
             return redirect("tariff_upload")
         return render(request, "tariff/shipment_entry_form.html", {"form": form})
-    # initial values for convenience
-    from django.utils.timezone import now
-    form = EntryForm(initial={"import_date": now().date()})
+    form = EntryForm()
     return render(request, "tariff/shipment_entry_form.html", {"form": form})
 
 def upload_docs_view(request):
