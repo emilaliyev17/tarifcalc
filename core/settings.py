@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'whitenoise',
     'django_htmx',
     'consolidation_app',
+    'tariff',
 ]
 
 MIDDLEWARE = [
