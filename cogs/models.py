@@ -1,14 +1,85 @@
 from django.db import models
 from django.contrib.auth.models import User
+from decimal import Decimal
 import json
 
+# --- LEGACY HTSUS MODEL - COMMENTED FOR MIGRATION ---
+# class HTSUSCode(models.Model):
+#     code = models.CharField(max_length=20, unique=True)
+#     description = models.TextField()
+#     rate_pct = models.DecimalField(max_digits=5, decimal_places=2, help_text="e.g. 3.5 means 3.5%")
+#     def __str__(self):
+#         return self.code
+
+# --- NEW UNIFIED HTS MODEL ---
 class HTSUSCode(models.Model):
-    code = models.CharField(max_length=20, unique=True)
+    # Core fields
+    code = models.CharField(max_length=20, unique=True)  # Keep longer length for compatibility
     description = models.TextField()
-    rate_pct = models.DecimalField(max_digits=5, decimal_places=2, help_text="e.g. 3.5 means 3.5%")
+    uom = models.CharField(max_length=20, blank=True, help_text="Unit of measure")
+
+    # Simple rate for backward compatibility (COGS style)
+    rate_pct = models.DecimalField(
+        max_digits=7,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        help_text="Simple ad valorem rate % for quick calculations"
+    )
+
+    # Flags for complex tariffs
+    has_complex_rates = models.BooleanField(
+        default=False,
+        help_text="If True, check HTSRateDetail for country/program specific rates"
+    )
+
+    def get_rate_for_country(self, country_code=None, program_code=None, date=None):
+        """Get applicable rate considering country and trade program"""
+        if not self.has_complex_rates:
+            return self.rate_pct or Decimal(0)
+
+        # Logic for complex rates will query HTSRateDetail
+        # For now, return simple rate as fallback
+        return self.rate_pct or Decimal(0)
 
     def __str__(self):
-        return self.code
+        return f"{self.code} - {self.description[:50]}"
+
+# --- DETAILED RATE MODEL (like TariffRate) ---
+class HTSRateDetail(models.Model):
+    """Detailed rates by country/program/date - only used when HTSUSCode.has_complex_rates=True"""
+
+    RATE_TYPES = [
+        ('ADVAL', 'Ad Valorem (%)'),
+        ('SPECIFIC', 'Specific (per unit)'),
+        ('COMPOUND', 'Compound (both)'),
+    ]
+
+    hts_code = models.ForeignKey(HTSUSCode, on_delete=models.CASCADE, related_name='rate_details')
+
+    # Location and program
+    country_code = models.CharField(max_length=2, blank=True, help_text="ISO country code")
+    trade_program = models.CharField(max_length=10, blank=True, help_text="SPI code")
+
+    # Rate information
+    rate_type = models.CharField(max_length=10, choices=RATE_TYPES, default='ADVAL')
+    adval_pct = models.DecimalField(max_digits=7, decimal_places=4, null=True, blank=True)
+    specific_amount = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    specific_uom = models.CharField(max_length=20, blank=True)
+
+    # Additional duties (301, 232, etc)
+    additional_duty_type = models.CharField(max_length=20, blank=True)
+    additional_duty_pct = models.DecimalField(max_digits=7, decimal_places=4, null=True, blank=True)
+
+    # Validity period
+    effective_from = models.DateField()
+    effective_to = models.DateField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['country_code', 'trade_program', '-effective_from']
+
+    def __str__(self):
+        return f"{self.hts_code.code} - {self.country_code or 'ALL'} - {self.rate_type}"
 
 # --- LEGACY SKU MODEL - COMMENTED FOR MIGRATION ---
 # class SKU(models.Model):
