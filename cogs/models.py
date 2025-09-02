@@ -10,11 +10,54 @@ class HTSUSCode(models.Model):
     def __str__(self):
         return self.code
 
+# --- LEGACY SKU MODEL - COMMENTED FOR MIGRATION ---
+# class SKU(models.Model):
+#     sku = models.CharField(max_length=100, unique=True)
+#     name = models.CharField(max_length=255, blank=True, null=True)
+#     htsus_code = models.ForeignKey(HTSUSCode, on_delete=models.SET_NULL, blank=True, null=True)
+#     htsus_rate_pct = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Overrides HTSUSCode rate if present")
+#
+#     def __str__(self):
+#         return self.sku
+
+# --- NEW UNIFIED SKU MODEL ---
 class SKU(models.Model):
-    sku = models.CharField(max_length=100, unique=True)
+    # Core fields
+    sku = models.CharField(max_length=100, unique=True)  # Keep longer length from COGS
     name = models.CharField(max_length=255, blank=True, null=True)
+
+    # HTS and tariff fields
     htsus_code = models.ForeignKey(HTSUSCode, on_delete=models.SET_NULL, blank=True, null=True)
-    htsus_rate_pct = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Overrides HTSUSCode rate if present")
+    htsus_rate_pct = models.DecimalField(
+        max_digits=7,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        help_text="Overrides HTSUSCode rate if present"
+    )
+
+    # Origin and trade program fields (from Tariff)
+    origin_country = models.CharField(
+        max_length=2,
+        blank=True,
+        null=True,
+        help_text="ISO 2-letter country code"
+    )
+    claimed_spi = models.CharField(
+        max_length=10,
+        blank=True,
+        help_text="Special Program Indicator"
+    )
+
+    # Effective date fields (from Tariff)
+    effective_from = models.DateField(null=True, blank=True)
+    effective_to = models.DateField(null=True, blank=True)
+
+    # Override tracking
+    override_reason = models.TextField(
+        blank=True,
+        help_text="Reason for rate override"
+    )
 
     def __str__(self):
         return self.sku
