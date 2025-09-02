@@ -1,5 +1,8 @@
 from .models import InvoiceLine, CostPool, AllocatedCost, HTSUSCode, SKU
 from decimal import Decimal
+from django.db import models
+from tariff.models import Entry
+from datetime import date
 
 class AllocationService:
 
@@ -63,6 +66,8 @@ class AllocationService:
         AllocatedCost.objects.bulk_create(allocations)
 
     def compute_htsus_for_invoice(self, invoice):
+        """Calculate HTSUS tariffs with support for country-specific rates"""
+
         htsus_cost_pool, created = CostPool.objects.get_or_create(
             invoice=invoice,
             name="HTSUS Tariff",
@@ -74,20 +79,68 @@ class AllocationService:
             }
         )
 
+        # Get country code if Entry is linked
+        country_code = None
+        if getattr(invoice, 'entry', None):
+            country_code = invoice.entry.country_origin
+
         total_tariff = Decimal(0)
+
         for line in invoice.lines.all():
-            # Modified logic for rate determination
+            # Rate determination logic
             if not invoice.apply_db_htsus_rate and invoice.manual_htsus_rate_pct is not None:
+                # Manual override at invoice level
                 rate = invoice.manual_htsus_rate_pct
             else:
-                rate = line.sku.htsus_rate_pct or (line.sku.htsus_code.rate_pct if line.sku.htsus_code else Decimal(0))
+                # Check SKU level first
+                if line.sku.htsus_rate_pct is not None:
+                    rate = line.sku.htsus_rate_pct
+                elif line.sku.htsus_code:
+                    # Use HTS code rate
+                    hts = line.sku.htsus_code
 
+                    # Check if complex rates exist and country is known
+                    if getattr(hts, 'has_complex_rates', False) and country_code:
+                        # Get country-specific rate
+                        rate = self._get_complex_rate(hts, country_code, invoice.invoice_date)
+                    else:
+                        # Use simple rate
+                        rate = hts.rate_pct if hts.rate_pct else Decimal(0)
+                else:
+                    # No HTS code assigned
+                    rate = Decimal(0)
+
+            # Calculate tariff amount
             tariff_amount = (line.price_vendor * line.quantity) * (rate / Decimal(100))
             total_tariff += tariff_amount
 
         htsus_cost_pool.amount_total = total_tariff
         htsus_cost_pool.save()
         self.allocate_cost(htsus_cost_pool)
+
+    def _get_complex_rate(self, hts_code, country_code, invoice_date):
+        """Get complex rate from HTSRateDetail for specific country and date"""
+
+        from cogs.models import HTSRateDetail
+
+        # Find applicable rate detail
+        rate_details = HTSRateDetail.objects.filter(
+            hts_code=hts_code,
+            country_code__in=[country_code, ''],  # Country-specific or global
+            effective_from__lte=invoice_date
+        ).filter(
+            models.Q(effective_to__gte=invoice_date) | models.Q(effective_to__isnull=True)
+        ).order_by('-country_code', '-effective_from')  # Prefer country-specific
+
+        if rate_details.exists():
+            detail = rate_details.first()
+
+            # For now, return only ad valorem rate
+            # TODO: Add support for specific duties and compound rates
+            return detail.adval_pct if detail.adval_pct else Decimal(0)
+
+        # Fallback to simple rate
+        return hts_code.rate_pct if hts_code.rate_pct else Decimal(0)
 
     def round_and_fix_pennies(self, total_amount, allocations):
         total_allocated = Decimal(0)
