@@ -145,6 +145,12 @@ class Invoice(models.Model):
     invoice_date = models.DateField()
     container = models.ForeignKey(Container, on_delete=models.SET_NULL, blank=True, null=True)
     entry = models.ForeignKey('tariff.Entry', on_delete=models.SET_NULL, blank=True, null=True, help_text="Link to customs entry if available")
+    country_origin = models.CharField(
+        max_length=2,
+        blank=True,
+        null=True,
+        help_text="Country of manufacture (ISO 2-letter code) for all items in this invoice"
+    )
     po_number = models.CharField(max_length=100)
     currency = models.CharField(max_length=3, default="USD")
     apply_db_htsus_rate = models.BooleanField(default=True, help_text="If False, manual HTSUS rate will be used for this invoice.")

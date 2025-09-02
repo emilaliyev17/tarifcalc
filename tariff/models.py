@@ -77,6 +77,9 @@ class Entry(models.Model):
     notes = models.TextField(blank=True)
     entered_value = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     gross_weight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    
+    def __str__(self):
+        return f"Entry {self.entry_number} - {self.country_origin}"
 
 class EntryLine(models.Model):
     entry = models.ForeignKey(Entry, on_delete=models.CASCADE)
