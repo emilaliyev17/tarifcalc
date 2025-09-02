@@ -14,7 +14,12 @@
             {% csrf_token %}
             <div class="mb-3">
                 <label for="id_file" class="form-label">Select CSV file</label>
-                <input class="form-control" type="file" id="id_file" name="file">
+                {{ form.file }}
+            </div>
+            <div class="mb-3">
+                <label for="id_country_origin" class="form-label">Country of Origin</label>
+                {{ form.country_origin }}
+                <div class="form-text">Optional; used for country-specific HTS rates.</div>
             </div>
             <button type="submit" class="btn btn-primary">Upload</button>
         </form>

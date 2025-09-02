@@ -25,6 +25,7 @@ def invoice_upload(request):
         form = InvoiceUploadForm(request.POST, request.FILES)
         if form.is_valid():
             csv_file = request.FILES['file']
+            country_origin = form.cleaned_data.get('country_origin') or None
             if not csv_file.name.endswith('.csv'):
                 messages.error(request, 'This is not a CSV file')
                 return redirect('invoice_upload')
@@ -55,6 +56,7 @@ def invoice_upload(request):
                         defaults={
                             'invoice_date': invoice_date,
                             'container': container,
+                            'country_origin': country_origin,
                             'po_number': row.get('PO#'),
                         }
                     )
