@@ -20,6 +20,19 @@ def home(request):
     return render(request, 'home.html')
 
 @login_required
+def clear_invoice_data(request):
+    """Clear only uploaded invoice data, keep SKU and HTS reference data"""
+    from cogs.models import Invoice, InvoiceLine, Container, CostPool, AllocatedCost
+    # Delete in correct order due to foreign keys
+    AllocatedCost.objects.all().delete()
+    CostPool.objects.all().delete()
+    InvoiceLine.objects.all().delete()
+    Invoice.objects.all().delete()
+    Container.objects.all().delete()
+    messages.success(request, 'All invoice data cleared successfully')
+    return redirect('results')
+
+@login_required
 def clear_all_data(request):
     """Clear all invoice data"""
     from cogs.models import Invoice, InvoiceLine, Container, CostPool, AllocatedCost

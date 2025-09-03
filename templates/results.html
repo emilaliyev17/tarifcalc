@@ -33,6 +33,10 @@
                 </ul>
             </div>
             <a href="{% url 'recalculate_costs' %}" class="btn btn-secondary">Recalculate</a>
+            <a href="{% url 'clear_invoice_data' %}" class="btn btn-warning"
+               onclick="return confirm('This will delete ALL uploaded invoice data. Are you sure?')">
+               Clear All Invoice Data
+            </a>
             <a href="{% url 'download_results_csv' %}" class="btn btn-success">Download CSV</a>
         </div>
     </div>
