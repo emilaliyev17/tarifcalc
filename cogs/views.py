@@ -49,6 +49,8 @@ def clear_all_data(request):
 def invoice_upload(request):
     if request.method == 'POST':
         form = InvoiceUploadForm(request.POST, request.FILES)
+        # Ensure variable is always defined to avoid NameError
+        country_origin = None
         if form.is_valid():
             csv_file = request.FILES['file']
             country_origin = form.cleaned_data.get('country_origin') or None
