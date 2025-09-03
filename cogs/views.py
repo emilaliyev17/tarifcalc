@@ -142,30 +142,78 @@ def sku_upload(request):
             io_string = io.StringIO(decoded_file)
             reader = csv.DictReader(io_string)
 
+            created_skus = 0
+            updated_skus = 0
+            created_hts = 0
+            updated_hts = 0
+
             for row in reader:
-                sku_val = row.get('sku')
+                sku_val = (row.get('sku') or '').strip()
                 if not sku_val:
                     continue
 
-                sku, created = SKU.objects.get_or_create(sku=sku_val)
-                sku.name = row.get('name', sku.name)
-                
-                htsus_code_str = row.get('htsus_code')
-                if htsus_code_str:
+                # Prepare HTSUS data from CSV
+                hts_code_str = (row.get('htsus_code') or '').strip()
+                rate_str = (row.get('htsus_rate_pct') or '').strip()
+                desc = (row.get('htsus_description') or row.get('description') or 'Imported via SKU upload').strip()
+
+                hts_obj = None
+                if hts_code_str:
+                    # Parse rate as Decimal if provided
+                    rate_val = None
+                    if rate_str:
+                        try:
+                            rate_val = Decimal(rate_str)
+                        except Exception:
+                            raise ValueError(f"Invalid htsus_rate_pct '{rate_str}' for HTS {hts_code_str} (SKU {sku_val})")
+
+                    hts_obj, hts_created = HTSUSCode.objects.update_or_create(
+                        code=hts_code_str,
+                        defaults={
+                            'description': desc or 'Imported via SKU upload',
+                            'rate_pct': rate_val,
+                        }
+                    )
+                    if hts_created:
+                        created_hts += 1
+                    else:
+                        updated_hts += 1
+
+                # Update or create SKU and link to HTS
+                sku_defaults = {
+                    'name': (row.get('name') or '').strip() or None,
+                }
+                sku_obj, sku_created = SKU.objects.update_or_create(
+                    sku=sku_val,
+                    defaults=sku_defaults
+                )
+                if hts_obj:
+                    sku_obj.htsus_code = hts_obj
+
+                # Optionally keep per-SKU override if provided
+                # (retains backward compatibility; HTS rate remains source of truth)
+                if rate_str:
                     try:
-                        htsus_code = HTSUSCode.objects.get(code=htsus_code_str)
-                        sku.htsus_code = htsus_code
-                    except HTSUSCode.DoesNotExist:
-                        messages.warning(request, f"HTSUS code {htsus_code_str} not found for SKU {sku_val}. Please create it first.")
+                        sku_obj.htsus_rate_pct = Decimal(rate_str)
+                    except Exception:
+                        raise ValueError(f"Invalid htsus_rate_pct '{rate_str}' for SKU {sku_val}")
 
-                rate_override = row.get('htsus_rate_pct')
-                if rate_override:
-                    sku.htsus_rate_pct = Decimal(rate_override)
-                
-                sku.save()
+                sku_obj.save()
+                if sku_created:
+                    created_skus += 1
+                else:
+                    updated_skus += 1
 
-            messages.success(request, 'SKUs uploaded successfully')
+            messages.success(
+                request,
+                f"SKUs processed: {created_skus} created, {updated_skus} updated. "
+                f"HTSUS codes: {created_hts} created, {updated_hts} updated."
+            )
 
+        except KeyError as e:
+            messages.error(request, f"Missing required column: {str(e)}. Expected headers: sku,name,htsus_code,htsus_rate_pct")
+        except ValueError as e:
+            messages.error(request, str(e))
         except Exception as e:
             messages.error(request, f'Error processing file: {e}')
         
