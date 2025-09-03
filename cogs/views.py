@@ -19,6 +19,19 @@ import pandas as pd
 def home(request):
     return render(request, 'home.html')
 
+@login_required
+def clear_all_data(request):
+    """Clear all invoice data"""
+    from cogs.models import Invoice, InvoiceLine, Container, CostPool, AllocatedCost
+    # Delete all invoice-related data in correct order
+    AllocatedCost.objects.all().delete()
+    CostPool.objects.all().delete()
+    InvoiceLine.objects.all().delete()
+    Invoice.objects.all().delete()
+    Container.objects.all().delete()
+    messages.success(request, 'All data cleared successfully')
+    return redirect('home')
+
 
 def invoice_upload(request):
     if request.method == 'POST':

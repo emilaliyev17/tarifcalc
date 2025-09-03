@@ -10,6 +10,10 @@
         <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
             <a href="{% url 'invoice_upload' %}" class="btn btn-primary btn-lg px-4 gap-3">Upload Invoice</a>
             <a href="{% url 'results' %}" class="btn btn-outline-secondary btn-lg px-4">View Results</a>
+            <a href="{% url 'clear_all_data' %}" class="btn btn-danger btn-lg px-4"
+               onclick="return confirm('This will delete ALL invoice data. Are you sure?')">
+               Clear All Data
+            </a>
         </div>
     </div>
 </div>
