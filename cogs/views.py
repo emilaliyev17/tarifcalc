@@ -67,7 +67,7 @@ def invoice_upload(request):
                     # Normalize date format
                     invoice_date_str = row.get('Invoice date')
                     invoice_date = None
-                    for fmt in ('%Y-%m-%d', '%m/%d/%y', '%d.%m.%Y'):
+                    for fmt in ('%Y-%m-%d', '%m/%d/%y', '%d.%m.%Y', '%m/%d/%Y'):
                         try:
                             invoice_date = datetime.strptime(invoice_date_str, fmt).date()
                             break
