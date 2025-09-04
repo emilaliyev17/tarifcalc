@@ -31,7 +31,7 @@ ALLOWED_HOSTS = ['*'] if DEBUG else ['.onrender.com', 'localhost', '127.0.0.1']
 
 CSRF_TRUSTED_ORIGINS = [
     'https://tarifcalc.onrender.com',
-    'http://tarifcalc.onrender.com',
+    'https://*.onrender.com'
 ]
 
 # Use secure cookies in production
