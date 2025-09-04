@@ -13,6 +13,7 @@ import io
 import json
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
+from django.db import IntegrityError
 import pandas as pd
 
 
@@ -596,3 +597,13 @@ def download_results_csv(request):
         writer.writerow(row)
 
     return response
+
+
+def clear_all_skus(request):
+    if request.method == 'POST':
+        try:
+            count, _ = SKU.objects.all().delete()
+            messages.success(request, f"Successfully deleted {count} SKUs.")
+        except IntegrityError:
+            messages.error(request, "Could not delete all SKUs because some are still linked to existing invoices.")
+    return redirect('sku_list')

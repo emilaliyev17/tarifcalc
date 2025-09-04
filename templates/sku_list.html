@@ -10,6 +10,10 @@
             <h2>Manage SKUs</h2>
             <div>
                 <a href="{% url 'sku_download' %}" class="btn btn-success">Download SKUs</a>
+                <form action="{% url 'clear_all_skus' %}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to permanently delete ALL SKUs? This action cannot be undone.');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Clear All SKUs</button>
+                </form>
             </div>
         </div>
 

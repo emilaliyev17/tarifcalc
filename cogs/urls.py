@@ -9,6 +9,7 @@ urlpatterns = [
     path('skus/', views.sku_list, name='sku_list'),
     path('skus/upload/', views.sku_upload, name='sku_upload'),
     path('skus/download/', views.sku_download, name='sku_download'),
+    path('skus/clear/', views.clear_all_skus, name='clear_all_skus'),
     path('skus/template/download/', views.download_htsus_sku_template, name='download_htsus_sku_template'),
     path('skus/<int:pk>/edit/', views.sku_edit, name='sku_edit'),
     path('htsus/<int:pk>/delete/', views.htsus_code_delete, name='htsus_code_delete'),
