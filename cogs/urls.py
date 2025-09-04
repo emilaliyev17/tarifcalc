@@ -11,7 +11,6 @@ urlpatterns = [
     path('skus/download/', views.sku_download, name='sku_download'),
     path('skus/template/download/', views.download_htsus_sku_template, name='download_htsus_sku_template'),
     path('skus/<int:pk>/edit/', views.sku_edit, name='sku_edit'),
-    path('htsus/', views.htsus_code_list, name='htsus_code_list'),
     path('htsus/<int:pk>/delete/', views.htsus_code_delete, name='htsus_code_delete'),
     path('htsus/upload/', views.htsus_bulk_upload, name='htsus_bulk_upload'),
     path('htsus/template/', views.download_htsus_template, name='download_htsus_template'),

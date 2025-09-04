@@ -228,18 +228,7 @@ def sku_download(request):
     return response
 
 
-def htsus_code_list(request):
-    if request.method == 'POST':
-        form = HTSUSCodeForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'HTSUS code added successfully')
-            return redirect('htsus_code_list')
-    else:
-        form = HTSUSCodeForm()
-    
-    codes = HTSUSCode.objects.all()
-    return render(request, 'htsus_code_list.html', {'form': form, 'codes': codes})
+ 
 
 
 def htsus_code_delete(request, pk):
