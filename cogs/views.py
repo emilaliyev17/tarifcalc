@@ -186,6 +186,13 @@ def sku_upload(request):
                     'htsus_code': hts_obj
                 }
 
+                # --- BEGIN DIAGNOSTIC CODE ---
+                print("--- DIAGNOSTIC DATA ---")
+                print(f"Attempting update_or_create for SKU: '{sku_val}' (type: {type(sku_val)})")
+                print(f"Using defaults: {sku_defaults} (type: {type(sku_defaults)})")
+                print("--- END DIAGNOSTIC DATA ---")
+                # --- END DIAGNOSTIC CODE ---
+
                 sku_obj, sku_created = SKU.objects.update_or_create(
                     sku=sku_val,
                     defaults=sku_defaults
@@ -602,8 +609,8 @@ def download_results_csv(request):
 def clear_all_skus(request):
     if request.method == 'POST':
         try:
-            count, _ = SKU.objects.all().delete()
-            messages.success(request, f"Successfully deleted {count} SKUs.")
+            deleted_count, _ = SKU.objects.all().delete()
+            messages.success(request, f"Successfully deleted {str(deleted_count)} SKUs.")
         except IntegrityError:
             messages.error(request, "Could not delete all SKUs because some are still linked to existing invoices.")
     return redirect('sku_list')
