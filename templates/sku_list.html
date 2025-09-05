@@ -47,7 +47,7 @@
                     <th>SKU</th>
                     <th>Name</th>
                     <th>HTSUS Code</th>
-                    <th>HTSUS Rate Override (%)</th>
+                    <th>HTSUS Rate (%)</th>
                     <th></th>
                 </tr>
             </thead>
@@ -57,7 +57,15 @@
                     <td>{{ sku.sku }}</td>
                     <td>{{ sku.name }}</td>
                     <td>{{ sku.htsus_code.code|default:"-" }}</td>
-                    <td>{{ sku.htsus_rate_pct|default:"-" }}</td>
+                    <td>
+                        {% if sku.htsus_rate_pct %}
+                            {{ sku.htsus_rate_pct }}
+                        {% elif sku.htsus_code and sku.htsus_code.rate_pct %}
+                            {{ sku.htsus_code.rate_pct }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                     <td>
                         <a href="{% url 'sku_edit' sku.pk %}" class="btn btn-primary btn-sm">Edit</a>
                     </td>

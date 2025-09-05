@@ -132,8 +132,10 @@ def sku_edit(request, pk):
 
 
 def sku_upload(request):
+
     if request.method == 'POST':
         csv_file = request.FILES.get('file')
+
         if not csv_file or not csv_file.name.endswith('.csv'):
             messages.error(request, 'Пожалуйста, загрузите корректный CSV файл.')
             return redirect('sku_list')
@@ -144,7 +146,7 @@ def sku_upload(request):
             reader = csv.DictReader(io_string)
 
             created_skus, updated_skus = 0, 0
-            created_hts, updated_hts = 0
+            created_hts, updated_hts = 0, 0
 
             required_headers = ['sku', 'name', 'htsus_code', 'htsus_rate_pct']
             if not all(header in reader.fieldnames for header in required_headers):
@@ -163,7 +165,7 @@ def sku_upload(request):
                 hts_obj = None
                 if hts_code_str:
                     rate_val = None
-                    if rate_str: # This check prevents the crash
+                    if rate_str:
                         try:
                             rate_val = Decimal(rate_str)
                         except InvalidOperation:
@@ -186,12 +188,6 @@ def sku_upload(request):
                     'htsus_code': hts_obj
                 }
 
-                # --- BEGIN DIAGNOSTIC CODE ---
-                print("--- DIAGNOSTIC DATA ---")
-                print(f"Attempting update_or_create for SKU: '{sku_val}' (type: {type(sku_val)})")
-                print(f"Using defaults: {sku_defaults} (type: {type(sku_defaults)})")
-                print("--- END DIAGNOSTIC DATA ---")
-                # --- END DIAGNOSTIC CODE ---
 
                 sku_obj, sku_created = SKU.objects.update_or_create(
                     sku=sku_val,
@@ -208,9 +204,8 @@ def sku_upload(request):
                 f"HTSUS: {created_hts} создано, {updated_hts} обновлено."
             )
 
-        except ValueError as e:
-            messages.error(request, str(e))
         except Exception as e:
+
             messages.error(request, f'Произошла ошибка при обработке файла: {e}')
 
         return redirect('sku_list')
