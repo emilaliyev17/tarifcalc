@@ -367,6 +367,8 @@ def add_freight_cost(request):
         total_freight_cost = float(data.get('total_freight_cost', 0))
         shipment_company = data.get('shipment_company', '')
         shipment_invoice = data.get('shipment_invoice', '')
+        allocation_scope = data.get('allocation_scope', 'container')
+        allocation_method = data.get('allocation_method', 'volume')
         
         # Get invoice lines from database
         invoice_lines = InvoiceLine.objects.all().select_related('invoice', 'sku')
@@ -387,8 +389,8 @@ def add_freight_cost(request):
         freight_pool, created = CostPool.objects.update_or_create(
             name='Freight Cost',
             defaults={
-                'scope': CostPool.Scope.CONTAINER,
-                'method': CostPool.Method.VOLUME,
+                'scope': CostPool.Scope.CONTAINER if allocation_scope == 'container' else CostPool.Scope.INVOICE if allocation_scope == 'invoice' else CostPool.Scope.ALL,
+                'method': CostPool.Method.VOLUME if allocation_method == 'volume' else CostPool.Method.PRICE_QUANTITY,
                 'amount_total': Decimal(str(total_freight_cost)),
                 'shipment_company': shipment_company,
                 'shipment_invoice': shipment_invoice,

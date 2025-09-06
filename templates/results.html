@@ -149,12 +149,7 @@
                     {% endfor %}
                     <td><strong>${{ result.total_cost|floatformat:2 }}</strong></td>
                     <td>${{ result.unit_total_cost|floatformat:2 }}</td>
-                    <td>
-                        <form method="post" action="{% url 'toggle_htsus' result.line.invoice.pk %}" style="display:inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-info">Toggle HTSUS</button>
-                        </form>
-                    </td>
+                    <!-- Toggle HTSUS button removed - HTSUS now calculated automatically -->
                 </tr>
                 {% endfor %}
             </tbody>
@@ -182,6 +177,39 @@
                         <div class="mb-3">
                             <label for="shipmentInvoice" class="form-label">Invoice Number</label>
                             <input type="text" class="form-control" id="shipmentInvoice" name="shipment_invoice" placeholder="Enter invoice number">
+                        </div>
+                        <!-- Distribution Method -->
+                        <div class="mb-3">
+                            <label class="form-label">Distribute by:</label>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="freightDistMethod" id="freightByVolume" value="volume" checked>
+                                    <label class="form-check-label" for="freightByVolume">By Volume</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="freightDistMethod" id="freightByPrice" value="price_quantity">
+                                    <label class="form-check-label" for="freightByPrice">By Price × Quantity</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Apply Scope -->
+                        <div class="mb-3">
+                            <label class="form-label">Apply to:</label>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="freightScope" id="freightToContainer" value="container" checked>
+                                    <label class="form-check-label" for="freightToContainer">Container</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="freightScope" id="freightToInvoice" value="invoice">
+                                    <label class="form-check-label" for="freightToInvoice">Invoice</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="freightScope" id="freightToAll" value="all">
+                                    <label class="form-check-label" for="freightToAll">All</label>
+                                </div>
+                            </div>
                         </div>
                         <div class="alert alert-info">
                             <small>The freight cost will be distributed proportionally based on each item's volume from the uploaded invoice data.</small>

@@ -605,7 +605,9 @@ function addFreightCost() {
         body: JSON.stringify({
             total_freight_cost: parseFloat(totalFreight),
             shipment_company: shipmentCompany,
-            shipment_invoice: shipmentInvoice
+            shipment_invoice: shipmentInvoice,
+            allocation_method: document.querySelector('input[name="freightDistMethod"]:checked').value,
+            allocation_scope: document.querySelector('input[name="freightScope"]:checked').value
         })
     })
     .then(response => response.json())
