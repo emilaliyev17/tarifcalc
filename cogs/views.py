@@ -300,8 +300,13 @@ def results(request):
         vendor_cost = line.price_vendor * line.quantity
         freight_cost = line.allocatedcost_set.filter(cost_pool__name='Freight Cost').first()
         freight_cost_amount = freight_cost.amount_allocated if freight_cost else 0
-        htsus_tariff = line.allocatedcost_set.filter(cost_pool__name='HTSUS Tariff').first()
-        htsus_tariff_amount = htsus_tariff.amount_allocated if htsus_tariff else 0
+        # Calculate HTSUS tariff on the fly based on SKU rates
+        htsus_rate = Decimal('0')
+        if line.sku and line.sku.htsus_rate_pct is not None:
+            htsus_rate = line.sku.htsus_rate_pct
+        elif line.sku and line.sku.htsus_code and line.sku.htsus_code.rate_pct:
+            htsus_rate = line.sku.htsus_code.rate_pct
+        htsus_tariff_amount = vendor_cost * (htsus_rate / Decimal('100'))
         
         # Collect all other allocated costs for this line
         other_cost_allocations = {}
@@ -569,7 +574,13 @@ def download_results_csv(request):
         allocations = {ac.cost_pool.name: ac.amount_allocated for ac in line.allocatedcost_set.all()}
 
         freight_cost_amount = allocations.get('Freight Cost', Decimal(0))
-        htsus_tariff_amount = allocations.get('HTSUS Tariff', Decimal(0))
+        # Calculate HTSUS tariff on the fly for CSV export
+        htsus_rate = Decimal('0')
+        if line.sku and line.sku.htsus_rate_pct is not None:
+            htsus_rate = line.sku.htsus_rate_pct
+        elif line.sku and line.sku.htsus_code and line.sku.htsus_code.rate_pct:
+            htsus_rate = line.sku.htsus_code.rate_pct
+        htsus_tariff_amount = vendor_cost * (htsus_rate / Decimal('100'))
         
         other_costs_values = []
         current_line_other_costs_total = Decimal(0)
