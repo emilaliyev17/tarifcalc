@@ -5,6 +5,12 @@ RATE_TYPES = (("adval","Ad Valorem"), ("spec","Specific"), ("compound","Compound
 class Country(models.Model):
     name = models.CharField(max_length=100, unique=True)
     code = models.CharField(max_length=2, unique=True)  # ISO code
+    section_301_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0.0,
+        help_text="Section 301 duty rate percentage (e.g., 7.5 for 7.5%)"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

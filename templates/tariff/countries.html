@@ -17,7 +17,13 @@
                         </div>
                         <div class="mb-3">
                             <label>Country Code (2 letters)</label>
-                            <input type="text" name="code" class="form-control" maxlength="2" required>
+                            <input type="text" class="form-control" id="countryCode" name="code" maxlength="2" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="section301Rate" class="form-label">Section 301 Rate (%)</label>
+                            <input type="number" class="form-control" id="section301Rate" name="section_301_rate" 
+                                   step="0.01" min="0" max="100" placeholder="e.g., 7.5" value="0">
+                            <small class="form-text text-muted">Enter percentage (7.5 for 7.5%)</small>
                         </div>
                         <button type="submit" name="add_country" class="btn btn-primary">Add Country</button>
                     </form>
@@ -34,6 +40,7 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Code</th>
+                                <th>Section 301 Rate (%)</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -42,6 +49,16 @@
                             <tr>
                                 <td>{{ country.name }}</td>
                                 <td>{{ country.code }}</td>
+                                <td>
+                                    <form method="post" style="display:inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="country_id" value="{{ country.id }}">
+                                        <input type="number" name="section_301_rate" class="form-control d-inline-block" 
+                                               style="width: 100px; display: inline-block !important;" 
+                                               step="0.01" min="0" max="100" value="{{ country.section_301_rate }}">
+                                        <button type="submit" name="update_country" class="btn btn-sm btn-primary">Update</button>
+                                    </form>
+                                </td>
                                 <td>
                                     <form method="post" style="display:inline;">
                                         {% csrf_token %}

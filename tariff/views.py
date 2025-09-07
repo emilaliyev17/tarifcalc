@@ -3,6 +3,7 @@ from django.shortcuts import render, redirect
 from django.conf import settings
 from django.contrib import messages
 import os
+from decimal import Decimal, InvalidOperation
 
 from .forms import EntryForm
 from .forms_upload import UploadForm
@@ -65,10 +66,33 @@ def countries_view(request):
         if 'add_country' in request.POST:
             name = request.POST.get('name')
             code = request.POST.get('code', '').upper()
+
+            # Handle Section 301 rate
+            rate_str = (request.POST.get('section_301_rate', '0') or '0').strip()
+            try:
+                rate = Decimal(rate_str)
+            except InvalidOperation:
+                rate = Decimal('0')
+
             if name and code:
-                Country.objects.get_or_create(name=name, code=code)
+                country, created = Country.objects.get_or_create(
+                    name=name,
+                    code=code,
+                    defaults={'section_301_rate': rate}
+                )
                 messages.success(request, f'Country {name} added')
-        
+
+        elif 'update_country' in request.POST:
+            country_id = request.POST.get('country_id')
+            rate_str = (request.POST.get('section_301_rate', '0') or '0').strip()
+            try:
+                rate = Decimal(rate_str)
+            except InvalidOperation:
+                rate = Decimal('0')
+            Country.objects.filter(id=country_id).update(section_301_rate=rate)
+            messages.success(request, 'Country updated successfully')
+            return redirect('tariff_countries')
+
         elif 'delete_country' in request.POST:
             country_id = request.POST.get('country_id')
             Country.objects.filter(id=country_id).delete()

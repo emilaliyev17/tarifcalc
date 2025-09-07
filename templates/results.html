@@ -123,6 +123,7 @@
                     <th>Vendor Cost</th>
                     <th>Freight Cost</th>
                     <th>HTSUS Tariff</th>
+                    <th>Section 301</th>
                     {% for cost_name in other_cost_pool_names %}
                     <th>{{ cost_name }}</th>
                     {% endfor %}
@@ -144,6 +145,7 @@
                     <td>${{ result.vendor_cost|floatformat:2 }}</td>
                     <td>${{ result.freight_cost|floatformat:2 }}</td>
                     <td>${{ result.htsus_tariff|floatformat:2 }}</td>
+                    <td>${{ result.section_301|floatformat:2 }}</td>
                     {% for cost_name in other_cost_pool_names %}
                     <td>${{ result.other_cost_allocations|get_item:cost_name|floatformat:2 }}</td>
                     {% endfor %}

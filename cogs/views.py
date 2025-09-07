@@ -8,6 +8,7 @@ from django.views.decorators.http import require_POST
 from .forms import InvoiceUploadForm, HTSUSCodeForm, SKUForm, CostPoolForm
 from .models import Invoice, InvoiceLine, SKU, Container, HTSUSCode, CostPool, AllocatedCost
 from .services import AllocationService
+from tariff.models import Country
 import csv
 import io
 import json
@@ -308,6 +309,16 @@ def results(request):
             htsus_rate = line.sku.htsus_code.rate_pct
         htsus_tariff_amount = vendor_cost * (htsus_rate / Decimal('100'))
         
+        # Calculate Section 301 duty based on country
+        section_301_amount = Decimal('0')
+        if line.invoice and line.invoice.country_origin:
+            try:
+                country = Country.objects.get(code=line.invoice.country_origin)
+                section_301_rate = country.section_301_rate or Decimal('0')
+                section_301_amount = vendor_cost * (section_301_rate / Decimal('100'))
+            except Country.DoesNotExist:
+                section_301_amount = Decimal('0')
+        
         # Collect all other allocated costs for this line
         other_cost_allocations = {}
         current_line_other_costs_total = Decimal(0)
@@ -316,7 +327,7 @@ def results(request):
                 other_cost_allocations[allocated_cost.cost_pool.name] = allocated_cost.amount_allocated
                 current_line_other_costs_total += allocated_cost.amount_allocated
 
-        total_cost = vendor_cost + freight_cost_amount + htsus_tariff_amount + current_line_other_costs_total
+        total_cost = vendor_cost + freight_cost_amount + htsus_tariff_amount + section_301_amount + current_line_other_costs_total
         unit_total_cost = (total_cost / line.quantity).quantize(Decimal('0.01')) if line.quantity > 0 else Decimal(0)
 
         results_data.append({
@@ -324,6 +335,7 @@ def results(request):
             'vendor_cost': vendor_cost,
             'freight_cost': freight_cost_amount,
             'htsus_tariff': htsus_tariff_amount,
+            'section_301': section_301_amount,  # ADD THIS LINE
             'other_cost_allocations': other_cost_allocations, # New: detailed other costs
             'total_cost': total_cost,
             'unit_total_cost': unit_total_cost,
@@ -550,7 +562,7 @@ def download_results_csv(request):
     header = [
         'Invoice#', 'Date', 'Container ID', 'PO#', 'SKU', 
         'Quantity', 'Vendor Price', 'Vendor Cost', 'Freight Cost',
-        'HTSUS Tariff'
+        'HTSUS Tariff', 'Section 301'
     ] + other_cost_pool_names + [
         'TOTAL COST', 'Unit Total Cost'
     ]
@@ -583,6 +595,16 @@ def download_results_csv(request):
         elif line.sku and line.sku.htsus_code and line.sku.htsus_code.rate_pct:
             htsus_rate = line.sku.htsus_code.rate_pct
         htsus_tariff_amount = vendor_cost * (htsus_rate / Decimal('100'))
+
+        # Calculate Section 301 duty based on country
+        section_301_amount = Decimal('0')
+        if line.invoice and line.invoice.country_origin:
+            try:
+                country = Country.objects.get(code=line.invoice.country_origin)
+                section_301_rate = country.section_301_rate or Decimal('0')
+                section_301_amount = vendor_cost * (section_301_rate / Decimal('100'))
+            except Country.DoesNotExist:
+                section_301_amount = Decimal('0')
         
         other_costs_values = []
         current_line_other_costs_total = Decimal(0)
@@ -591,7 +613,7 @@ def download_results_csv(request):
             other_costs_values.append(f'${cost_value:.2f}')
             current_line_other_costs_total += cost_value
 
-        total_cost = vendor_cost + freight_cost_amount + htsus_tariff_amount + current_line_other_costs_total
+        total_cost = vendor_cost + freight_cost_amount + htsus_tariff_amount + section_301_amount + current_line_other_costs_total
         unit_total_cost = (total_cost / line.quantity) if line.quantity > 0 else Decimal(0)
 
         row = [
@@ -605,6 +627,7 @@ def download_results_csv(request):
             f'${vendor_cost:.2f}',
             f'${freight_cost_amount:.2f}',
             f'${htsus_tariff_amount:.2f}',
+            f'${section_301_amount:.2f}',
         ] + other_costs_values + [
             f'${total_cost:.2f}',
             f'${unit_total_cost:.2f}'
