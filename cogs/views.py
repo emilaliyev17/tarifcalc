@@ -100,7 +100,7 @@ def invoice_upload(request):
                     )
 
                 messages.success(request, 'Invoice uploaded successfully')
-                return redirect('home')
+                return redirect('results')
 
             except Exception as e:
                 messages.error(request, f'Error processing file: {e}')
