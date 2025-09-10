@@ -25,4 +25,6 @@ urlpatterns = [
     path('debug-base-dir/', views.debug_base_dir, name='debug_base_dir'),
     path('add-freight-cost/', views.add_freight_cost, name='add_freight_cost'),
     path('add-custom-cost/', views.add_custom_cost, name='add_custom_cost'),
+    path('api/containers/', views.get_containers_list, name='get_containers_list'),
+    path('api/invoices/', views.get_invoices_list, name='get_invoices_list'),
 ]

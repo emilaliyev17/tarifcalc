@@ -567,7 +567,9 @@
             cost_name: costName,
             cost_amount: parseFloat(costAmount),
             allocation_scope: scope,
-            allocation_method: method
+            allocation_method: method,
+            container_id: document.getElementById('costContainerId').value || null,
+            invoice_id: document.getElementById('costInvoiceId').value || null
         })
     })
     .then(response => response.json())
@@ -584,6 +586,8 @@
 function addFreightCost() {
     var freightModal = new bootstrap.Modal(document.getElementById('freightCostModal'));
     freightModal.show();
+    // Initialize the modal with default selection
+    setTimeout(initializeFreightModal, 100);
 }
 
         function applyFreightCost() {
@@ -607,7 +611,9 @@ function addFreightCost() {
             shipment_company: shipmentCompany,
             shipment_invoice: shipmentInvoice,
             allocation_method: document.querySelector('input[name="freightDistMethod"]:checked').value,
-            allocation_scope: document.querySelector('input[name="freightScope"]:checked').value
+            allocation_scope: document.querySelector('input[name="freightScope"]:checked').value,
+            container_id: document.getElementById('freightContainerId').value || null,
+            invoice_id: document.getElementById('freightInvoiceId').value || null
         })
     })
     .then(response => response.json())
@@ -625,6 +631,94 @@ function addFreightCost() {
     });
 }
 
+        // Container/Invoice dropdown management functions
+        function loadContainers(selectId) {
+            fetch('/legacy/api/containers/', {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById(selectId);
+                    select.innerHTML = '<option value="">Select a container...</option>';
+                    if (data.success && data.containers) {
+                        data.containers.forEach(container => {
+                            const option = document.createElement('option');
+                            option.value = container.id;
+                            option.textContent = container.display;
+                            select.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading containers:', error);
+                    const select = document.getElementById(selectId);
+                    select.innerHTML = '<option value="">Error loading containers</option>';
+                });
+        }
+
+        function loadInvoices(selectId) {
+            fetch('/legacy/api/invoices/', {
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById(selectId);
+                    select.innerHTML = '<option value="">Select an invoice...</option>';
+                    if (data.success && data.invoices) {
+                        data.invoices.forEach(invoice => {
+                            const option = document.createElement('option');
+                            option.value = invoice.id;
+                            option.textContent = invoice.display;
+                            select.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading invoices:', error);
+                    const select = document.getElementById(selectId);
+                    select.innerHTML = '<option value="">Error loading invoices</option>';
+                });
+        }
+
+        function updateFreightScopeSelection() {
+            const scope = document.querySelector('input[name="freightScope"]:checked').value;
+            const containerDiv = document.getElementById('freightContainerSelect');
+            const invoiceDiv = document.getElementById('freightInvoiceSelect');
+            
+            containerDiv.style.display = scope === 'container' ? 'block' : 'none';
+            invoiceDiv.style.display = scope === 'invoice' ? 'block' : 'none';
+            
+            if (scope === 'container') {
+                loadContainers('freightContainerId');
+            } else if (scope === 'invoice') {
+                loadInvoices('freightInvoiceId');
+            }
+        }
+
+        function initializeFreightModal() {
+            // Initialize the freight modal with default selection (Invoice)
+            updateFreightScopeSelection();
+        }
+
+        function updateCostScopeSelection() {
+            const scope = document.getElementById('allocationScope').value;
+            const containerDiv = document.getElementById('costContainerSelect');
+            const invoiceDiv = document.getElementById('costInvoiceSelect');
+            
+            containerDiv.style.display = scope === 'container' ? 'block' : 'none';
+            invoiceDiv.style.display = scope === 'invoice' ? 'block' : 'none';
+            
+            if (scope === 'container') {
+                loadContainers('costContainerId');
+            } else if (scope === 'invoice') {
+                loadInvoices('costInvoiceId');
+            }
+        }
+
         // Helper function to get CSRF token
         function getCookie(name) {
             let cookieValue = null;
@@ -640,4 +734,35 @@ function addFreightCost() {
             }
             return cookieValue;
         }
+
+        // Add event listeners when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Freight cost modal event listeners
+            const freightScopeRadios = document.querySelectorAll('input[name="freightScope"]');
+            freightScopeRadios.forEach(radio => {
+                radio.addEventListener('change', updateFreightScopeSelection);
+            });
+
+            // Add new cost modal event listeners (using select dropdown)
+            const allocationSelect = document.getElementById('allocationScope');
+            if (allocationSelect) {
+                allocationSelect.addEventListener('change', function() {
+                    const containerDiv = document.getElementById('costContainerSelect');
+                    const invoiceDiv = document.getElementById('costInvoiceSelect');
+                    
+                    if (this.value === 'container') {
+                        containerDiv.style.display = 'block';
+                        invoiceDiv.style.display = 'none';
+                        loadContainers('costContainerId');
+                    } else if (this.value === 'invoice') {
+                        containerDiv.style.display = 'none';
+                        invoiceDiv.style.display = 'block';
+                        loadInvoices('costInvoiceId');
+                    } else {
+                        containerDiv.style.display = 'none';
+                        invoiceDiv.style.display = 'none';
+                    }
+                });
+            }
+        });
     </script>

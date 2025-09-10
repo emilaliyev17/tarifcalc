@@ -199,11 +199,11 @@
                             <label class="form-label">Apply to:</label>
                             <div>
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="freightScope" id="freightToContainer" value="container" checked>
+                                    <input class="form-check-input" type="radio" name="freightScope" id="freightToContainer" value="container">
                                     <label class="form-check-label" for="freightToContainer">Container</label>
                                 </div>
                                 <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="freightScope" id="freightToInvoice" value="invoice">
+                                    <input class="form-check-input" type="radio" name="freightScope" id="freightToInvoice" value="invoice" checked>
                                     <label class="form-check-label" for="freightToInvoice">Invoice</label>
                                 </div>
                                 <div class="form-check form-check-inline">
@@ -212,6 +212,21 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Container/Invoice Selection -->
+                        <div class="mb-3" id="freightContainerSelect" style="display: none;">
+                            <label for="freightContainerId" class="form-label">Select Container:</label>
+                            <select class="form-select" id="freightContainerId" name="container_id">
+                                <option value="">Loading containers...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="freightInvoiceSelect" style="display: none;">
+                            <label for="freightInvoiceId" class="form-label">Select Invoice:</label>
+                            <select class="form-select" id="freightInvoiceId" name="invoice_id">
+                                <option value="">Loading invoices...</option>
+                            </select>
+                        </div>
+
                         <div class="alert alert-info">
                             <small>The freight cost will be distributed proportionally based on each item's volume from the uploaded invoice data.</small>
                         </div>
@@ -260,6 +275,21 @@
                                 <option value="price_quantity">By Price * Quantity</option>
                             </select>
                         </div>
+
+                        <!-- Container/Invoice Selection -->
+                        <div class="mb-3" id="costContainerSelect" style="display: none;">
+                            <label for="costContainerId" class="form-label">Select Container:</label>
+                            <select class="form-select" id="costContainerId" name="container_id">
+                                <option value="">Loading containers...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="costInvoiceSelect" style="display: none;">
+                            <label for="costInvoiceId" class="form-label">Select Invoice:</label>
+                            <select class="form-select" id="costInvoiceId" name="invoice_id">
+                                <option value="">Loading invoices...</option>
+                            </select>
+                        </div>
+
                         <div class="alert alert-info">
                             <small>The cost will be distributed proportionally based on your selections.</small>
                         </div>

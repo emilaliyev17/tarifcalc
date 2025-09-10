@@ -94,7 +94,7 @@ def invoice_upload(request):
                     InvoiceLine.objects.create(
                         invoice=invoice,
                         sku=sku,
-                        quantity=int(row.get('Quantity')),
+                        quantity=int(float(row.get('Quantity'))),
                         price_vendor=Decimal(row.get('Price')),
                         total_vendor=Decimal(row.get('Total')),
                         unit_volume_cc=float(row.get('Volume'))
@@ -381,6 +381,8 @@ def add_freight_cost(request):
         shipment_invoice = data.get('shipment_invoice', '')
         allocation_scope = data.get('allocation_scope', 'container')
         allocation_method = data.get('allocation_method', 'volume')
+        container_id = data.get('container_id', None)
+        invoice_id = data.get('invoice_id', None)
         
         # Get invoice lines from database
         invoice_lines = InvoiceLine.objects.all().select_related('invoice', 'sku')
@@ -406,6 +408,8 @@ def add_freight_cost(request):
                 'amount_total': Decimal(str(total_freight_cost)),
                 'shipment_company': shipment_company,
                 'shipment_invoice': shipment_invoice,
+                'container_id': container_id if allocation_scope == 'container' and container_id else None,
+                'invoice_id': invoice_id if allocation_scope == 'invoice' and invoice_id else None,
                 'auto_compute': False
             }
         )
@@ -515,6 +519,8 @@ def add_custom_cost(request):
         cost_amount = float(data.get('cost_amount', 0))
         allocation_scope = data.get('allocation_scope')
         allocation_method = data.get('allocation_method')
+        container_id = data.get('container_id', None)
+        invoice_id = data.get('invoice_id', None)
         
         # Map the form values to model choices
         scope_map = {
@@ -537,6 +543,8 @@ def add_custom_cost(request):
             scope=scope_map.get(allocation_scope, CostPool.Scope.ALL),
             method=method_map.get(allocation_method, CostPool.Method.PRICE),
             amount_total=Decimal(str(cost_amount)),
+            container_id=container_id if allocation_scope == 'container' and container_id else None,
+            invoice_id=invoice_id if allocation_scope == 'invoice' and invoice_id else None,
             auto_compute=False
         )
         
@@ -645,3 +653,41 @@ def clear_all_skus(request):
         except IntegrityError:
             messages.error(request, "Could not delete all SKUs because some are still linked to existing invoices.")
     return redirect('sku_list')
+
+
+@login_required
+def get_containers_list(request):
+    """API endpoint to get list of all containers for dropdown"""
+    try:
+        containers = Container.objects.all().order_by('-id')
+        data = [
+            {
+                'id': container.id,
+                'container_id': container.container_id,
+                'display': container.container_id
+            }
+            for container in containers
+        ]
+        return JsonResponse({'success': True, 'containers': data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+def get_invoices_list(request):
+    """API endpoint to get list of all invoices for dropdown"""
+    try:
+        invoices = Invoice.objects.all().order_by('-invoice_date', '-id')
+        data = [
+            {
+                'id': invoice.id,
+                'invoice_number': invoice.invoice_number,
+                'date': invoice.invoice_date.strftime('%Y-%m-%d') if invoice.invoice_date else '',
+                'container': invoice.container.container_id if invoice.container else 'No container',
+                'display': f"{invoice.invoice_number} ({invoice.invoice_date})"
+            }
+            for invoice in invoices
+        ]
+        return JsonResponse({'success': True, 'invoices': data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
