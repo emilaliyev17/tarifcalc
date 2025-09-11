@@ -273,3 +273,44 @@ class CalculationLineItem(models.Model):
     
     def __str__(self):
         return f"{self.item_number} - {self.description[:50]}"
+
+
+class SavedResults(models.Model):
+    # Metadata fields
+    batch_name = models.CharField(max_length=255, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Invoice data (from CSV columns A-D)
+    invoice_number = models.CharField(max_length=100)
+    invoice_date = models.DateField()
+    container_id = models.CharField(max_length=100, blank=True)
+    po_number = models.CharField(max_length=100)
+    
+    # SKU and quantities (columns E-H)
+    sku = models.CharField(max_length=100)
+    quantity = models.IntegerField()
+    vendor_price = models.DecimalField(max_digits=10, decimal_places=2)
+    vendor_cost = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    # Fixed costs (columns I-K)
+    freight_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    htsus_tariff = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    section_301 = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # Dynamic costs (columns L,M,N and any others) stored as JSON
+    other_costs = models.JSONField(default=dict)
+    # Example: {"Other Freight": 42.58, "HHH": 4.38, "MMM": 8.75}
+    
+    # Final calculations (columns O-P)
+    total_cost = models.DecimalField(max_digits=12, decimal_places=2)
+    unit_total_cost = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    class Meta:
+        db_table = 'saved_results'
+        ordering = ['-created_at', 'invoice_number', 'sku']
+        indexes = [
+            models.Index(fields=['batch_name', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.batch_name} - {self.sku}"

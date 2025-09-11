@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from .forms import InvoiceUploadForm, HTSUSCodeForm, SKUForm, CostPoolForm
-from .models import Invoice, InvoiceLine, SKU, Container, HTSUSCode, CostPool, AllocatedCost
+from .models import Invoice, InvoiceLine, SKU, Container, HTSUSCode, CostPool, AllocatedCost, SavedResults
 from .services import AllocationService
 from tariff.models import Country
 import csv
@@ -15,6 +15,7 @@ import json
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from django.db import IntegrityError
+from django.db.models import Count, Sum, Min, Max
 import pandas as pd
 
 
@@ -138,7 +139,7 @@ def sku_upload(request):
         csv_file = request.FILES.get('file')
 
         if not csv_file or not csv_file.name.endswith('.csv'):
-            messages.error(request, 'Пожалуйста, загрузите корректный CSV файл.')
+            messages.error(request, 'Please upload a valid CSV file.')
             return redirect('sku_list')
 
         try:
@@ -151,7 +152,7 @@ def sku_upload(request):
 
             required_headers = ['sku', 'name', 'htsus_code', 'htsus_rate_pct']
             if not all(header in reader.fieldnames for header in required_headers):
-                messages.error(request, f"CSV файл должен содержать заголовки: {', '.join(required_headers)}")
+                messages.error(request, f"CSV file must contain headers: {', '.join(required_headers)}")
                 return redirect('sku_list')
 
             for row in reader:
@@ -161,7 +162,7 @@ def sku_upload(request):
 
                 hts_code_str = (row.get('htsus_code') or '').strip()
                 rate_str = (row.get('htsus_rate_pct') or '').strip()
-                desc = (row.get('description') or 'Импортировано через загрузку SKU').strip()
+                desc = (row.get('description') or 'Imported via SKU upload').strip()
 
                 hts_obj = None
                 if hts_code_str:
@@ -170,7 +171,7 @@ def sku_upload(request):
                         try:
                             rate_val = Decimal(rate_str)
                         except InvalidOperation:
-                            raise ValueError(f"Неверный формат ставки '{rate_str}' для HTSUS {hts_code_str}")
+                            raise ValueError(f"Invalid rate format '{rate_str}' for HTSUS {hts_code_str}")
 
                     hts_obj, hts_created = HTSUSCode.objects.update_or_create(
                         code=hts_code_str,
@@ -201,13 +202,13 @@ def sku_upload(request):
 
             messages.success(
                 request,
-                f"Обработка завершена. SKU: {created_skus} создано, {updated_skus} обновлено. "
-                f"HTSUS: {created_hts} создано, {updated_hts} обновлено."
+                f"Processing complete. SKU: {created_skus} created, {updated_skus} updated. "
+                f"HTSUS: {created_hts} created, {updated_hts} updated."
             )
 
         except Exception as e:
 
-            messages.error(request, f'Произошла ошибка при обработке файла: {e}')
+            messages.error(request, f'Error processing file: {e}')
 
         return redirect('sku_list')
 
@@ -691,3 +692,322 @@ def get_invoices_list(request):
         return JsonResponse({'success': True, 'invoices': data})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+@require_POST
+def save_results_snapshot(request):
+    """
+    Save current results to SavedResults table.
+    Reuses the same calculation logic as results() view.
+    """
+    try:
+        # Generate batch name with timestamp
+        batch_name = f"Results {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        
+        # Get the same data that results() view uses (lines 281-293)
+        lines = InvoiceLine.objects.all().select_related('invoice', 'sku').prefetch_related('allocatedcost_set__cost_pool')
+        
+        # Apply same filtering logic as results() view
+        container_filter = request.GET.get('container')
+        invoice_filter = request.GET.get('invoice')
+        date_filter = request.GET.get('date')
+
+        if container_filter:
+            lines = lines.filter(invoice__container__container_id=container_filter)
+        if invoice_filter:
+            lines = lines.filter(invoice__invoice_number=invoice_filter)
+        if date_filter:
+            lines = lines.filter(invoice__invoice_date=date_filter)
+        
+        # Reuse the exact calculation logic from results() view (lines 300-342)
+        saved_count = 0
+        
+        for line in lines:
+            # Calculate all costs (same as results view)
+            vendor_cost = line.price_vendor * line.quantity
+            
+            # Get freight cost (same logic as results view)
+            freight_cost = line.allocatedcost_set.filter(cost_pool__name='Freight Cost').first()
+            freight_cost_amount = freight_cost.amount_allocated if freight_cost else 0
+            
+            # Calculate HTSUS tariff on the fly based on SKU rates (same logic as results view)
+            htsus_rate = Decimal('0')
+            if line.sku and line.sku.htsus_rate_pct is not None:
+                htsus_rate = line.sku.htsus_rate_pct
+            elif line.sku and line.sku.htsus_code and line.sku.htsus_code.rate_pct:
+                htsus_rate = line.sku.htsus_code.rate_pct
+            htsus_tariff_amount = vendor_cost * (htsus_rate / Decimal('100'))
+            
+            # Calculate Section 301 duty based on country (same logic as results view)
+            section_301_amount = Decimal('0')
+            if line.invoice and line.invoice.country_origin:
+                try:
+                    country = Country.objects.get(code=line.invoice.country_origin)
+                    section_301_rate = country.section_301_rate or Decimal('0')
+                    section_301_amount = vendor_cost * (section_301_rate / Decimal('100'))
+                except Country.DoesNotExist:
+                    section_301_amount = Decimal('0')
+            
+            # Collect all other allocated costs for this line (same logic as results view)
+            other_cost_allocations = {}
+            current_line_other_costs_total = Decimal(0)
+            for allocated_cost in line.allocatedcost_set.all():
+                if allocated_cost.cost_pool.name not in ['Freight Cost', 'HTSUS Tariff']:
+                    other_cost_allocations[allocated_cost.cost_pool.name] = float(allocated_cost.amount_allocated)
+                    current_line_other_costs_total += allocated_cost.amount_allocated
+
+            # Calculate totals (same logic as results view)
+            total_cost = vendor_cost + freight_cost_amount + htsus_tariff_amount + section_301_amount + current_line_other_costs_total
+            unit_total_cost = (total_cost / line.quantity).quantize(Decimal('0.01')) if line.quantity > 0 else Decimal(0)
+            
+            # Save to SavedResults
+            SavedResults.objects.create(
+                batch_name=batch_name,
+                invoice_number=line.invoice.invoice_number,
+                invoice_date=line.invoice.invoice_date,
+                container_id=line.invoice.container.container_id if line.invoice.container else '',
+                po_number=line.invoice.po_number,
+                sku=line.sku.sku if line.sku else '',
+                quantity=line.quantity,
+                vendor_price=line.price_vendor,
+                vendor_cost=vendor_cost,
+                freight_cost=freight_cost_amount,
+                htsus_tariff=htsus_tariff_amount,
+                section_301=section_301_amount,
+                other_costs=other_cost_allocations,  # JSON field
+                total_cost=total_cost,
+                unit_total_cost=unit_total_cost
+            )
+            saved_count += 1
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Saved {saved_count} results to batch "{batch_name}"',
+            'batch_name': batch_name,
+            'saved_count': saved_count
+        })
+    
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'message': f'Error saving results: {str(e)}'
+        })
+
+
+@login_required
+def reports_list(request):
+    """
+    Display all saved batches with summary information
+    """
+    # Get batch summaries
+    batch_summaries = SavedResults.objects.values('batch_name').annotate(
+        record_count=Count('id'),
+        total_cost=Sum('total_cost'),
+        created_at=Min('created_at')
+    ).order_by('-created_at')
+    
+    return render(request, 'reports_list.html', {
+        'batch_summaries': batch_summaries,
+        'total_batches': batch_summaries.count()
+    })
+
+
+@login_required
+def reports_detail(request, batch_name):
+    """
+    Display detailed results for a specific batch
+    Reuse results.html table structure
+    """
+    # Get all records for this batch
+    batch_records = SavedResults.objects.filter(batch_name=batch_name).order_by('invoice_number', 'sku')
+    
+    if not batch_records.exists():
+        messages.error(request, f'Batch "{batch_name}" not found')
+        return redirect('reports_list')
+    
+    # Get unique cost types for dynamic columns
+    other_cost_types = set()
+    for record in batch_records:
+        if record.other_costs:
+            other_cost_types.update(record.other_costs.keys())
+    other_cost_types = sorted(list(other_cost_types))
+    
+    # Calculate summary stats
+    total_records = batch_records.count()
+    total_cost = sum(record.total_cost for record in batch_records)
+    
+    return render(request, 'reports_detail.html', {
+        'batch_name': batch_name,
+        'batch_records': batch_records,
+        'other_cost_types': other_cost_types,
+        'total_records': total_records,
+        'total_cost': total_cost,
+        'created_at': batch_records.first().created_at
+    })
+
+
+@login_required
+def reports_export(request, batch_name):
+    """
+    Export specific batch to CSV
+    Reuse download_results_csv logic
+    """
+    batch_records = SavedResults.objects.filter(batch_name=batch_name)
+    
+    if not batch_records.exists():
+        messages.error(request, f'Batch "{batch_name}" not found')
+        return redirect('reports_list')
+    
+    # Get unique cost types for headers
+    other_cost_types = set()
+    for record in batch_records:
+        if record.other_costs:
+            other_cost_types.update(record.other_costs.keys())
+    other_cost_types = sorted(list(other_cost_types))
+    
+    # Create CSV response
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{batch_name}_export.csv"'
+    writer = csv.writer(response)
+    
+    # Write header
+    header = [
+        'Invoice#', 'Date', 'Container ID', 'PO#', 'SKU', 
+        'Quantity', 'Vendor Price', 'Vendor Cost', 'Freight Cost',
+        'HTSUS Tariff', 'Section 301'
+    ] + other_cost_types + [
+        'TOTAL COST', 'Unit Total Cost'
+    ]
+    writer.writerow(header)
+    
+    # Write data rows
+    for record in batch_records:
+        other_costs_values = [record.other_costs.get(cost_type, 0) for cost_type in other_cost_types]
+        
+        row = [
+            record.invoice_number,
+            record.invoice_date.strftime('%m/%d/%Y'),
+            record.container_id,
+            record.po_number,
+            record.sku,
+            record.quantity,
+            f'${record.vendor_price:.2f}',
+            f'${record.vendor_cost:.2f}',
+            f'${record.freight_cost:.2f}',
+            f'${record.htsus_tariff:.2f}',
+            f'${record.section_301:.2f}',
+        ] + [f'${cost:.2f}' for cost in other_costs_values] + [
+            f'${record.total_cost:.2f}',
+            f'${record.unit_total_cost:.2f}'
+        ]
+        writer.writerow(row)
+    
+    return response
+
+
+@login_required
+@require_POST
+def reports_delete(request, batch_name):
+    """
+    Delete a specific batch
+    """
+    try:
+        deleted_count, _ = SavedResults.objects.filter(batch_name=batch_name).delete()
+        messages.success(request, f'Deleted batch "{batch_name}" ({deleted_count} records)')
+    except Exception as e:
+        messages.error(request, f'Error deleting batch: {str(e)}')
+    
+    return redirect('reports_list')
+
+
+@login_required
+def reports_custom(request):
+    """Custom report generator with filtering"""
+    
+    filter_type = request.GET.get('filter_type')
+    filter_value = request.GET.get('filter_value')
+    
+    # Get all unique values for dropdowns
+    all_dates = SavedResults.objects.values_list('invoice_date', flat=True).distinct().order_by('-invoice_date')
+    all_invoices = SavedResults.objects.values_list('invoice_number', flat=True).distinct().order_by('invoice_number')
+    all_pos = SavedResults.objects.values_list('po_number', flat=True).distinct().order_by('po_number')
+    all_containers = SavedResults.objects.exclude(container_id='').values_list('container_id', flat=True).distinct().order_by('container_id')
+    
+    # Filter results if parameters provided
+    filtered_results = None
+    if filter_type and filter_value:
+        if filter_type == 'date':
+            filtered_results = SavedResults.objects.filter(invoice_date=filter_value)
+        elif filter_type == 'invoice':
+            filtered_results = SavedResults.objects.filter(invoice_number=filter_value)
+        elif filter_type == 'po':
+            filtered_results = SavedResults.objects.filter(po_number=filter_value)
+        elif filter_type == 'container':
+            filtered_results = SavedResults.objects.filter(container_id=filter_value)
+            
+        # Get dynamic cost columns
+        if filtered_results:
+            other_cost_types = set()
+            for record in filtered_results:
+                if record.other_costs:
+                    other_cost_types.update(record.other_costs.keys())
+            other_cost_types = sorted(list(other_cost_types))
+        else:
+            other_cost_types = []
+    else:
+        other_cost_types = []
+    
+    # Handle CSV download
+    if request.GET.get('download') == 'csv' and filtered_results:
+        # Create CSV response
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="custom_report_{filter_type}_{filter_value}.csv"'
+        writer = csv.writer(response)
+        
+        # Write header
+        header = [
+            'Invoice#', 'Date', 'Container ID', 'PO#', 'SKU', 
+            'Quantity', 'Vendor Price', 'Vendor Cost', 'Freight Cost',
+            'HTSUS Tariff', 'Section 301'
+        ] + other_cost_types + [
+            'TOTAL COST', 'Unit Total Cost'
+        ]
+        writer.writerow(header)
+        
+        # Write data rows
+        for record in filtered_results:
+            other_costs_values = [record.other_costs.get(cost_type, 0) for cost_type in other_cost_types]
+            
+            row = [
+                record.invoice_number,
+                record.invoice_date.strftime('%m/%d/%Y'),
+                record.container_id,
+                record.po_number,
+                record.sku,
+                record.quantity,
+                f'${record.vendor_price:.2f}',
+                f'${record.vendor_cost:.2f}',
+                f'${record.freight_cost:.2f}',
+                f'${record.htsus_tariff:.2f}',
+                f'${record.section_301:.2f}',
+            ] + [f'${cost:.2f}' for cost in other_costs_values] + [
+                f'${record.total_cost:.2f}',
+                f'${record.unit_total_cost:.2f}'
+            ]
+            writer.writerow(row)
+        
+        return response
+    
+    context = {
+        'all_dates': [d.strftime('%Y-%m-%d') for d in all_dates],
+        'all_invoices': list(all_invoices),
+        'all_pos': list(all_pos),
+        'all_containers': list(all_containers),
+        'filter_type': filter_type,
+        'filter_value': filter_value,
+        'filtered_results': filtered_results,
+        'other_cost_types': other_cost_types
+    }
+    
+    return render(request, 'reports_custom.html', context)

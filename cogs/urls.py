@@ -17,6 +17,7 @@ urlpatterns = [
     path('htsus/template/', views.download_htsus_template, name='download_htsus_template'),
     path('htsus/export/', views.export_htsus_codes, name='export_htsus_codes'),
     path('results/', views.results, name='results'),
+    path('save-results/', views.save_results_snapshot, name='save_results_snapshot'),
     path('download-results-csv/', views.download_results_csv, name='download_results_csv'),
     path('cost-pool/add/', views.add_cost_pool, name='add_cost_pool'),
     path('delete-cost-pool/<int:pk>/', views.delete_cost_pool, name='delete_cost_pool'),
@@ -27,4 +28,9 @@ urlpatterns = [
     path('add-custom-cost/', views.add_custom_cost, name='add_custom_cost'),
     path('api/containers/', views.get_containers_list, name='get_containers_list'),
     path('api/invoices/', views.get_invoices_list, name='get_invoices_list'),
+    path('reports/', views.reports_list, name='reports_list'),
+    path('reports/custom/', views.reports_custom, name='reports_custom'),
+    path('reports/<str:batch_name>/', views.reports_detail, name='reports_detail'),
+    path('reports/<str:batch_name>/export/', views.reports_export, name='reports_export'),
+    path('reports/<str:batch_name>/delete/', views.reports_delete, name='reports_delete'),
 ]
